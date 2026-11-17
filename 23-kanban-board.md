@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -615,36 +613,3 @@ Add `EDIT_CARD {cardId, text}`; track `editingId` in `Board` state; render an in
 - Generating ids (`Math.random()`) inside the reducer → impure under Strict Mode.
 - No keyboard alternative.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Prioritise: static board → add/delete → drag between columns (append at end) → precise position → polish. Explain the `preventDefault` rule and the same-column index adjustment; those are what interviewers probe. If time is short, skip the indicator and persistence, mention them.
-
-| Minute | Activity |
-| --- | --- |
-| 0–5 | Clarify (columns fixed? reorder? touch?) |
-| 5–10 | State shape, `MOVE_CARD` semantics, event map |
-| 10–22 | Reducer (`ADD`, `DELETE`, `MOVE`) + static render |
-| 22–30 | Add-card form, delete, basic CSS |
-| 30–45 | Native DnD: dragstart / dragover / drop → move to end of column |
-| 45–55 | Precise index via midpoint, drop indicator, dim dragged card |
-| 55–62 | Keyboard move buttons, a11y labels |
-| 62–70 | Persistence, edge cases, follow-ups |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Reducer with `ADD_CARD`, `DELETE_CARD`, `MOVE_CARD` (immutable, no-op returns same state)
-- [ ] Explain the same-column index adjustment with an example
-- [ ] `draggable`, `dragstart` (`setData`), `dragover` (`preventDefault`), `drop`, `dragend`
-- [ ] Drop-at-position using the midpoint rule
-- [ ] Zero-layout-shift drop indicator
-- [ ] Ignore foreign drags (files)
-- [ ] Keyboard alternative (move buttons) + aria-labels
-- [ ] localStorage persistence with safe load
-- [ ] Normalised state version
-- [ ] Draggable columns
-- [ ] Pointer-events (touch) version
-- [ ] Undo/redo wrapper reducer
