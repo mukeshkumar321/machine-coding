@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -420,35 +418,3 @@ Abort the in-flight request, clear `items`, set `cursor=0`, `hasMore=true`, `sta
 - Putting `cursor` in state and reading it in a memoised callback → stale cursor, same page loaded twice.
 - Unbounded DOM growth with no virtualisation discussion.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Start by saying: *"sentinel + IntersectionObserver, in-flight guard, cursor in a ref, dedupe by id."* Get the happy path working before polish; then add error/end states.
-
-| Minutes | Activity |
-| --- | --- |
-| 0–5 | Clarify (pagination type, container vs window), design state + flow |
-| 5–12 | Mock API + render list with page 1 |
-| 12–22 | Sentinel + `IntersectionObserver` effect + `loadMore` |
-| 22–30 | Loading / end / empty states, in-flight guard, functional append |
-| 30–38 | Error state + Retry, abort on unmount |
-| 38–44 | Dedupe, extract `useInfiniteScroll` hook, CSS |
-| 44–50 | Edge cases, a11y ("Load more" fallback), virtualisation & scroll restoration discussion |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Mock paginated API with cursor + abort support.
-- [ ] Sentinel observed with `IntersectionObserver` and `rootMargin`.
-- [ ] Observer cleaned up (`disconnect`) in effect cleanup.
-- [ ] In-flight ref prevents duplicate requests.
-- [ ] Functional state update to append + dedupe by `id`.
-- [ ] Loading / error + Retry / end / empty states.
-- [ ] Short first page still fills the viewport (observer re-created).
-- [ ] Abort in-flight request on unmount.
-- [ ] Extract into `useInfiniteScroll` hook.
-- [ ] Add a scrollable-container variant (`root`).
-- [ ] Add virtualisation or scroll-position restoration.
-- [ ] Rebuild with a "Load more" button for accessibility.
