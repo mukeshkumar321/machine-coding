@@ -1,6 +1,6 @@
 # Accordion — Machine Coding
 
-> **Difficulty:** Easy | **Time:** 30–40 min | **Asked at / Frequency:** Very common (FAQ / settings-panel style question) — ⭐⭐⭐⭐⭐ | **Tier:** 1 (must know)
+> **Difficulty:** Easy | **Time:** 30–40 min | **Frequency:** ⭐⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -153,7 +153,9 @@ export default function Accordion({
                 className="accordion-header"
                 aria-expanded={isOpen}
                 aria-controls={panelId}
-                ref={(el) => (buttonRefs.current[index] = el)}
+                ref={(el) => {
+                  buttonRefs.current[index] = el;
+                }}
                 onClick={() => toggle(item.id)}
                 onKeyDown={(e) => handleKeyDown(e, index)}
               >
@@ -168,7 +170,9 @@ export default function Accordion({
               aria-labelledby={buttonId}
               className="accordion-panel"
             >
-              <div className="accordion-panel-inner">{item.content}</div>
+              <div className="accordion-panel-inner">
+                <div className="accordion-panel-body">{item.content}</div>
+              </div>
             </div>
           </div>
         );
@@ -231,8 +235,8 @@ export default function App() {
   transition: grid-template-rows 0.25s ease, visibility 0.25s;
 }
 .accordion-item.open .accordion-panel { grid-template-rows: 1fr; visibility: visible; }
-.accordion-panel-inner { overflow: hidden; min-height: 0; padding: 0 16px; }
-.accordion-item.open .accordion-panel-inner { padding: 12px 16px; }
+.accordion-panel-inner { overflow: hidden; min-height: 0; } /* no padding here, or the closed row can't shrink to 0 */
+.accordion-panel-body { padding: 12px 16px; }
 
 @media (prefers-reduced-motion: reduce) {
   .accordion-panel, .accordion-icon { transition: none; }
