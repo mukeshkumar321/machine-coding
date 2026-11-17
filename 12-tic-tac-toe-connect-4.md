@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -536,32 +534,3 @@ Render the newly placed disc with a CSS animation (`@keyframes drop` from `trans
 - Connect-4: dropping into the clicked row instead of the lowest empty row; indexing rows top-down vs bottom-up inconsistently.
 - Resetting state in `useEffect` on config change.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Write the pure functions first and talk through the index math. Mention the O(1)-counter optimisation, but implement the last-move scan because it generalises to Connect-4.
-
-| Minutes | Task |
-|---|---|
-| 0–5 | Clarify (K vs N, undo semantics), define `history` + `step` |
-| 5–15 | 3×3 board: render, click, alternate players (immutable update) |
-| 15–25 | N×N with `getWinningLine` (4 directions), winner highlight, draw |
-| 25–33 | History: undo / redo / jump, truncate on new move |
-| 33–40 | Connect-4: `gravity` + `getDropIndex`, column UI |
-| 40–45 | Edge cases, a11y, complexity discussion, AI/multiplayer follow-ups |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Index ↔ (row, col) conversions without thinking
-- [ ] `getWinningLine` works for all 4 directions, any N and K
-- [ ] Derived `winner` / `isDraw` / `nextPlayer` (no extra state)
-- [ ] Undo, redo, jump; new move truncates redo
-- [ ] Guards: occupied cell, game over, full column
-- [ ] Connect-4 reuses the engine (`k=4`, gravity)
-- [ ] `key` remount to change size
-- [ ] Buttons + `aria-label`s + live status
-- [ ] Explain O(1) counter trick and minimax AI
-- [ ] Re-do in 30 minutes
