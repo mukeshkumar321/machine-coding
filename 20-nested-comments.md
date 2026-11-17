@@ -1,6 +1,6 @@
 # Nested Comments (Reddit-style) — Machine Coding
 
-> **Difficulty:** Hard · **Time:** 60 min · **Asked at / Frequency:** Commonly reported at product companies (Atlassian, Uber, Flipkart, Meesho) — Very High · **Tier:** 1
+> **Difficulty:** Hard | **Time:** 60 min | **Frequency:** ⭐⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -264,7 +264,9 @@ import { useComments } from './CommentsContext';
 import CommentForm from './CommentForm';
 import { countAll, timeAgo } from './treeUtils';
 
-const CommentNode = memo(function CommentNode({ comment }) {
+// The inner function must NOT be named `CommentNode`: that name would shadow the memoised
+// constant inside the body, so children would render the un-memoised function.
+const CommentNode = memo(function Comment({ comment }) {
   const { currentUser, add, edit, remove } = useComments();
   const [collapsed, setCollapsed] = useState(false);
   const [mode, setMode] = useState(null); // 'reply' | 'edit' | null
@@ -281,7 +283,10 @@ const CommentNode = memo(function CommentNode({ comment }) {
     setMode(null);
   };
   const handleDelete = () => {
-    if (window.confirm('Delete this comment?')) remove(id);
+    if (window.confirm('Delete this comment?')) {
+      remove(id);
+      setMode(null); // a soft-deleted node stays mounted, so close any open form
+    }
   };
 
   const hiddenCount = collapsed ? countAll(children) : 0;
@@ -290,9 +295,10 @@ const CommentNode = memo(function CommentNode({ comment }) {
     <li className="comment">
       <div className="comment-header">
         <button
+          type="button"
           className="toggle"
           aria-expanded={!collapsed}
-          aria-label={collapsed ? 'Expand thread' : 'Collapse thread'}
+          aria-label={`Replies to ${deleted ? 'deleted comment' : author}`}
           onClick={() => setCollapsed((c) => !c)}
         >
           {collapsed ? '[+]' : '[–]'}
@@ -473,7 +479,7 @@ button:focus-visible, textarea:focus-visible { outline: 2px solid #2563eb; outli
 
 - **Recursive component:** `CommentNode` renders its own `children.map(c => <CommentNode />)`. Recursion ends naturally when `children` is empty — no depth limit needed.
 - **Immutable path copy:** `updateNode` walks the tree; for the target it returns `updater(n)`, for ancestors `{...n, children: newKids}`, and for everything else it returns the *same reference*. If nothing changed it returns the *original array* (so React bails out).
-- **Structural sharing + `memo`:** unchanged siblings keep identical `comment` props, so `React.memo` skips them. Editing a deep reply re-renders only its ancestors path.
+- **Structural sharing + `memo`:** unchanged siblings keep identical `comment` props, so `React.memo` skips them. Editing a deep reply re-renders only its ancestor path. Recursion must reference the *memoised* component (`CommentNode`); naming the inner function the same would shadow it and silently disable `memo` below the root.
 - **Reducer + context:** all mutations are pure state transitions; ids and timestamps are generated in the **action creator** (not the reducer) so the reducer stays pure/deterministic (matters in StrictMode). The context value is memoised and stable → consumers don't re-render because of it.
 - **Local UI state:** `collapsed` / `mode` live in each node. Because nodes are keyed by `id`, state survives siblings being added/removed.
 - **Delete semantics:** leaf → removed; has replies → `deleted: true` keeps conversation context; a soft-deleted node left with no replies is pruned.
@@ -487,7 +493,8 @@ button:focus-visible, textarea:focus-visible { outline: 2px solid #2563eb; outli
 - Edit with unchanged text → Save disabled.
 - Delete a comment that has replies → `[deleted]` placeholder, replies kept; no Reply/Edit actions on it.
 - Delete the last reply of a soft-deleted parent → parent pruned too (cascade up).
-- Deleting while its reply form is open — the node unmounts, local state disappears.
+- Deleting a comment that has replies (soft delete) → any open reply form on it is closed; a leaf simply unmounts, so its local state disappears.
+- Collapsing unmounts the whole subtree, so descendants' local state (their own collapsed flags, open forms) resets on expand. Lift it into the reducer / a `Set` of ids if that matters.
 - Collapse a thread with an open reply form → the form unmounts (typed text is lost) but `mode` is kept, so it reappears empty on expand. Acceptable; mention lifting draft text if asked.
 - Very deep threads → indentation eats the viewport; cap visual indentation after ~5–6 levels and show "Continue this thread".
 - Rapid double submit — form clears after first submit; second is blocked by `canSubmit`.
@@ -497,7 +504,7 @@ button:focus-visible, textarea:focus-visible { outline: 2px solid #2563eb; outli
 
 ## 8. Accessibility
 
-- Collapse button has `aria-expanded` and a descriptive `aria-label`.
+- Collapse button has a fixed descriptive `aria-label` plus `aria-expanded` for the state (don't change the label *and* use `aria-expanded` — the state would be announced twice, contradictorily).
 - Nested `ul/li` gives screen readers a list hierarchy ("list, 3 items, nested"). For tree semantics use `role="tree"/"treeitem"` with arrow-key navigation (follow-up).
 - All actions are real `<button>`s; the reply/edit textarea is auto-focused when opened; `Esc` cancels, `Ctrl/Cmd+Enter` submits.
 - Return focus to the Reply/Edit button after closing the form (improvement worth mentioning).
