@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -631,34 +629,3 @@ Serialise `{q, dept, sortKey, dir, page, size}` into query params (`useSearchPar
 - Forgetting empty state, or computing "Showing x–y" with 0-based indexes.
 - Case-sensitive search; building a `RegExp` from user input.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Prioritise in the order interviewers value: **render → sort → search/filter → pagination → resize**. State the pipeline (filter → sort → paginate) and "inputs are state, the rest is derived" early. If time is short, skip resize but describe pointer capture.
-
-| Minutes | Task |
-|---|---|
-| 0–6 | Clarify scope (client-side), define column config + state inputs |
-| 6–16 | Render table from config, mock data, memoised `Row` |
-| 16–28 | Sorting: 3-state toggle, type-aware comparator, `aria-sort`, no mutation |
-| 28–40 | Search + department filter, `useMemo` pipeline, page reset in handlers |
-| 40–52 | Pagination + page size + "Showing x–y of N" |
-| 52–64 | Column resize (pointer events, `colgroup`, `table-layout: fixed`) |
-| 64–70 | Extract `useDataTable`; a11y pass (captions, labels, keyboard resize) |
-| 70–75 | Edge cases; discuss server-side, virtualisation, debounce |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Table rendered from a column config (not hard-coded headers)
-- [ ] Sort cycles asc → desc → none, type-aware, stable, non-mutating
-- [ ] Search + dropdown filter combine; empty state shown
-- [ ] `useMemo` chain: filter → sort → slice with correct dependencies
-- [ ] Pagination with page-size and page reset on filter/sort change
-- [ ] Column resize with pointer capture, min width, keyboard support
-- [ ] Memoised `Row`; resizing doesn't re-render cells
-- [ ] `aria-sort`, caption, labelled controls, focusable scroll region
-- [ ] Explain server-side, virtualisation, debounce, multi-sort
-- [ ] Re-do in 60 minutes
