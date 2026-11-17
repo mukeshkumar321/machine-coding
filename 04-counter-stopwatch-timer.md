@@ -1,6 +1,6 @@
 # Counter → Stopwatch / Timer — Machine Coding
 
-> **Difficulty:** Easy → Medium | **Time:** 30–45 min | **Asked at / Frequency:** Very common (warm-up or "make it better" follow-up round) — ⭐⭐⭐⭐ | **Tier:** 1 (must know)
+> **Difficulty:** Easy → Medium | **Time:** 30–45 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -90,17 +90,17 @@ App
 ```jsx
 import { useState } from 'react';
 
-export default function Counter({ step = 1 }) {
-  const [count, setCount] = useState(0);
+export default function Counter({ step = 1, min = -Infinity, max = Infinity }) {
+  const [count, setCount] = useState(() => Math.min(max, Math.max(min, 0)));
 
   return (
     <section className="card">
       <h2>Counter</h2>
       <output aria-live="polite" className="display">{count}</output>
       <div className="row">
-        <button onClick={() => setCount((c) => c - step)}>−</button>
-        <button onClick={() => setCount(0)}>Reset</button>
-        <button onClick={() => setCount((c) => c + step)}>+</button>
+        <button onClick={() => setCount((c) => Math.max(min, c - step))} disabled={count <= min}>−</button>
+        <button onClick={() => setCount(Math.min(max, Math.max(min, 0)))}>Reset</button>
+        <button onClick={() => setCount((c) => Math.min(max, c + step))} disabled={count >= max}>+</button>
       </div>
     </section>
   );
@@ -241,7 +241,7 @@ export default function Timer() {
       </div>
 
       <output className="display" role="timer" aria-live="off">{shown}</output>
-      {finished && <p role="status">Time's up!</p>}
+      <p role="status">{finished ? "Time's up!" : ''}</p>
 
       <div className="row">
         {running ? (
@@ -323,7 +323,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 ## 8. Accessibility
 
 - Real `<button>`s with text labels; label the number inputs.
-- `role="timer"` with `aria-live="off"` — announcing every 10 ms would be unusable; announce only milestones via a separate `role="status"` (e.g. "Time's up!").
+- `role="timer"` with `aria-live="off"` — announcing every 10 ms would be unusable; announce only milestones via a separate `role="status"` (e.g. "Time's up!"). Keep that status element mounted and only change its text — live regions inserted together with their content are often not announced.
 - Disabled states reflect available actions.
 - Counter value in `<output aria-live="polite">`.
 - Don't rely on colour alone to indicate running/finished.
