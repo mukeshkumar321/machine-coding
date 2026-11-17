@@ -1,6 +1,6 @@
 # Star Rating — Machine Coding
 
-> **Difficulty:** Easy–Medium | **Time:** 30–40 min | **Asked at / Frequency:** Common (e-commerce / review widgets, very frequent in UI-component rounds) — ⭐⭐⭐⭐ | **Tier:** 1 (must know)
+> **Difficulty:** Easy–Medium | **Time:** 30–40 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -117,7 +117,7 @@ export default function StarRating({
   const [inner, setInner] = useState(defaultValue);
   const [hover, setHover] = useState(null);
 
-  const rating = isControlled ? value : inner;
+  const rating = Math.min(count, Math.max(0, isControlled ? value : inner)); // clamp bad input
   const display = hover ?? rating;
 
   const commit = (next) => {
@@ -252,7 +252,7 @@ export default function App() {
 - **Two values, one display:** committed `rating` vs transient `hover`. `display = hover ?? rating` means "leave" just clears `hover` — no need to remember the previous value.
 - **Fill percentage** `clamp(display − i, 0, 1) × 100` handles whole stars, halves, *and* arbitrary fractions (3.7 → 4th star 70%) with one formula.
 - **Half-star detection** uses `getBoundingClientRect()` of the star under the pointer (`e.currentTarget`) and compares `clientX` to the midpoint.
-- **Foreground glyph has `pointer-events: none`** so the star wrapper always receives the event, and its `currentTarget` rect stays stable.
+- **Foreground glyph has `pointer-events: none`** so `e.target` is always the background glyph, whose box equals the star's — this keeps `offsetX`-based math valid. (`e.currentTarget`, which `getBoundingClientRect` uses, is the star wrapper regardless of which child was hit.)
 - **Controlled/uncontrolled** with `value !== undefined`; `onChange` fires only on commit (click/keyboard), never on hover.
 - **Keyboard support via `role="slider"`** — a rating is a bounded numeric value, and slider semantics natively express half values (`aria-valuenow=3.5`).
 - **`setHover` with the same value** is a no-op (React bails out), so `mousemove` doesn't re-render continuously.
@@ -262,7 +262,7 @@ export default function App() {
 
 ## 7. Edge Cases
 
-- `value` > `count` or negative → clamp (`Math.min/max`) before using; fill formula already clamps visually.
+- `value` > `count` or negative → the reference clamps `rating` to `[0, count]` (ARIA values and keyboard stay valid); the fill formula clamps visually too.
 - `count` = 0 or non-integer → guard with `Math.max(0, Math.floor(count))`.
 - Click on the **same** rating → optionally clear to 0 (`allowClear`).
 - Moving the mouse across the gap between stars → `hover` stays on the last value (no flicker) because there's no gap in the markup.
