@@ -1,6 +1,6 @@
 # Search with Filters (E-commerce) — Machine Coding
 
-> **Difficulty:** Medium–Hard | **Time:** 60 min | **Asked at / Frequency:** Very common (Amazon, Flipkart, Myntra, Walmart, Booking, Airbnb-style listing pages) | **Tier:** 1 (must-know)
+> **Difficulty:** Medium–Hard | **Time:** 60 min | **Frequency:** ⭐⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -229,43 +229,29 @@ export function filterProducts(products, f) {
 }
 ```
 
-**`useDebouncedValue.js`**
-
-```js
-import { useEffect, useState } from 'react';
-
-export function useDebouncedValue(value, delay = 400) {
-  const [debounced, setDebounced] = useState(value);
-
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id); // each keystroke cancels the previous timer
-  }, [value, delay]);
-
-  return debounced;
-}
-```
-
 **`SearchPage.jsx`**
 
 ```jsx
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryParams } from './useQueryParams';
-import { useDebouncedValue } from './useDebouncedValue';
 import { ALL_BRANDS, ALL_CATEGORIES, PRODUCTS } from './data';
 import { SORT_OPTIONS, filterProducts, parseFilters } from './filters';
 import './search.css';
 
-function SearchBox({ urlValue, onCommit }) {
+function SearchBox({ urlValue, onCommit, delay = 400 }) {
   const [text, setText] = useState(urlValue);
-  const debounced = useDebouncedValue(text, 400);
-  const lastCommitted = useRef(urlValue);
+  const lastCommitted = useRef(urlValue); // the last `q` we know the URL holds
 
-  // text -> URL (debounced)
+  // text -> URL (debounced). Nothing to commit while text matches the URL,
+  // so mounting never rewrites the URL (e.g. drops `page`) and no stray history writes happen.
   useEffect(() => {
-    lastCommitted.current = debounced;
-    onCommit(debounced);
-  }, [debounced, onCommit]);
+    if (text === lastCommitted.current) return;
+    const id = setTimeout(() => {
+      lastCommitted.current = text;
+      onCommit(text);
+    }, delay);
+    return () => clearTimeout(id); // each keystroke cancels the previous timer
+  }, [text, delay, onCommit]);
 
   // URL -> text, but only for changes we didn't cause ourselves (Back button, Clear all).
   // Comparing with lastCommitted stops the URL echo from overwriting characters typed since.
@@ -434,7 +420,7 @@ export default function SearchPage() {
                   </p>
                   <p className="card__meta">
                     <strong>${p.price}</strong>
-                    <span aria-label={`Rated ${p.rating} out of 5`}>★ {p.rating.toFixed(1)}</span>
+                    <span role="img" aria-label={`Rated ${p.rating} out of 5`}>★ {p.rating.toFixed(1)}</span>
                   </p>
                 </li>
               ))}
@@ -501,9 +487,9 @@ body { margin: 0; font-family: system-ui, sans-serif; color: #111; }
 - **Same API as React Router.** `setParams(updater, { replace })` with `updater(prev) → new URLSearchParams`. Swapping in `useSearchParams` later is a one-line import change. The hook reads `window.location.search` fresh inside `setParams`, so it never uses a stale `params` closure — important because the debounce fires 400 ms later.
 - **Derive, don't copy.** `filters = parseFilters(params)` and `results = filterProducts(...)` are `useMemo` derivations; there is no `useState` mirroring the URL (the classic drift bug). `parseFilters` validates everything (finite numbers, sort whitelist), so `?min=abc&sort=hack` degrades gracefully.
 - **Repeated params for multi-select** (`category=A&category=B`) via `getAll` / `append` — readable, and what `URLSearchParams` is designed for.
-- **Debounce + URL echo problem.** The input is controlled by local `text` (instant typing). `useDebouncedValue` delays commits; commits use `replace` so Back doesn't walk through every query. When the URL later echoes `q` back, `urlValue !== lastCommitted.current` is *false* (we caused it), so we don't overwrite whatever the user typed in the meantime. When Back/Clear all changes `q`, the comparison is true → `setText(urlValue)` syncs the input.
+- **Debounce + URL echo problem.** The input is controlled by local `text` (instant typing). A timer effect in `SearchBox` commits `text` to the URL 400 ms after the last keystroke, via `replace` so Back doesn't walk through every query. `lastCommitted` remembers the `q` the URL holds: when the URL echoes our own commit back, `urlValue !== lastCommitted.current` is *false*, so we don't overwrite whatever the user typed in the meantime. When Back/Clear all changes `q`, the comparison is true → `setText(urlValue)` syncs the input. Because the timer only starts when `text` differs from `lastCommitted`, mounting never touches the URL.
 - **Filter changes `push`**, so Back undoes a filter; **typing replaces**, so Back doesn't undo letters.
-- **No-op guard** (`qs === current.toString()`) avoids duplicate history entries when nothing changed (e.g. the debounce effect on mount).
+- **No-op guard** (`qs === current.toString()`) avoids duplicate history entries when a change produces the same URL (e.g. re-selecting the current sort).
 - **Page reset.** Every filter change deletes `page` — the standard rule to avoid landing on an empty page 7.
 
 ---
@@ -515,7 +501,7 @@ body { margin: 0; font-family: system-ui, sans-serif; color: #111; }
 - Min > max → zero results + hint (don't silently swap).
 - Same filter clicked twice quickly → `toggleMulti` reads the **fresh** URL each time, not a closed-over array.
 - Back button after typing → input updates to the previous `q`; pending typing is discarded by design.
-- "Clear all" while the debounce timer is pending → text is reset via URL echo; the stale debounced value then re-commits `''`, a no-op (guarded).
+- "Clear all" while the debounce timer is pending → text is reset via URL echo, which re-runs the effect and cancels the pending timer (text now equals the URL, so nothing is committed).
 - Special characters in `q` (`&`, `#`, `+`, unicode) → `URLSearchParams` encodes/decodes them correctly; never hand-build query strings with `+`/`&`.
 - Very long query strings → cap `q` length or ignore unknown params.
 - Empty `q` → param removed (not `q=`), so URLs stay clean.
