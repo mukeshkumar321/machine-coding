@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -424,33 +422,3 @@ A `ModalProvider` holds a queue/state and exposes `openModal(config) → Promise
 - Scroll jump when body overflow toggles (no scrollbar compensation).
 - Returning `null` via CSS only (`display: none`) while effects keep running.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Announce the checklist up front: *portal, focus trap, focus restore, Esc, outside click, scroll lock, ARIA.* Then deliver them in order of effort/value.
-
-| Minutes | Activity |
-| --- | --- |
-| 0–4 | Clarify; list the behaviours; draw component tree |
-| 4–12 | Portal + overlay + close button + `open` prop |
-| 12–18 | Esc + outside click (with `target === currentTarget`) |
-| 18–24 | Scroll lock hook with cleanup + scrollbar compensation |
-| 24–34 | Focus trap + focus restore |
-| 34–39 | ARIA, `useId`, close button name |
-| 39–45 | CSS polish, edge cases, nested/animation/`<dialog>` discussion |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Portal to `document.body` with overlay and centered dialog.
-- [ ] Esc closes; listener cleaned up.
-- [ ] Overlay click closes only when clicking the overlay itself.
-- [ ] Scroll lock with scrollbar compensation + proper restore.
-- [ ] Focus moves in on open; Tab/Shift+Tab wrap; focus returns on close.
-- [ ] `role="dialog"`, `aria-modal`, `aria-labelledby`.
-- [ ] Works when unmounted while open (no leaks).
-- [ ] Animate exit with a `closing` state.
-- [ ] Add modal stack for nested dialogs.
-- [ ] Re-implement with native `<dialog>` and compare.
