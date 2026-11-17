@@ -1,6 +1,6 @@
 # Todo List — Machine Coding
 
-> **Difficulty:** Easy | **Time:** 40–45 min | **Asked at / Frequency:** Very common warm-up round (startups, product companies, Flipkart/Swiggy-style rounds) — ⭐⭐⭐⭐⭐ | **Tier:** 1 (must know)
+> **Difficulty:** Easy | **Time:** 40–45 min | **Frequency:** ⭐⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -97,11 +97,13 @@ App  (todos, filter, handlers)
 ```jsx
 import { useEffect, useState } from 'react';
 
-export function useLocalStorage(key, initialValue) {
+export function useLocalStorage(key, initialValue, isValid = () => true) {
   const [value, setValue] = useState(() => {
     try {
       const raw = localStorage.getItem(key);
-      return raw !== null ? JSON.parse(raw) : initialValue;
+      if (raw === null) return initialValue;
+      const parsed = JSON.parse(raw);
+      return isValid(parsed) ? parsed : initialValue; // valid JSON, wrong shape
     } catch {
       return initialValue; // corrupted JSON or storage blocked
     }
@@ -162,7 +164,10 @@ function TodoItem({ todo, onToggle, onEdit, onDelete }) {
   const skipBlur = useRef(false);
 
   useEffect(() => {
-    if (isEditing) inputRef.current?.select();
+    if (isEditing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
   }, [isEditing]);
 
   const startEdit = () => {
@@ -172,6 +177,7 @@ function TodoItem({ todo, onToggle, onEdit, onDelete }) {
   };
 
   const commit = () => {
+    skipBlur.current = true; // Enter unmounts the input too; don't commit twice
     setIsEditing(false);
     const trimmed = draft.trim();
     if (!trimmed) onDelete(todo.id);
@@ -206,13 +212,13 @@ function TodoItem({ todo, onToggle, onEdit, onDelete }) {
         <>
           <input
             type="checkbox"
-            id={`todo-${todo.id}`}
             checked={todo.completed}
+            aria-label={todo.text}
             onChange={() => onToggle(todo.id)}
           />
-          <label htmlFor={`todo-${todo.id}`} onDoubleClick={startEdit}>
+          <span className="todo-text" onDoubleClick={startEdit}>
             {todo.text}
-          </label>
+          </span>
           <button onClick={startEdit} aria-label={`Edit "${todo.text}"`}>
             Edit
           </button>
@@ -244,13 +250,15 @@ const FILTERS = {
 };
 
 export default function App() {
-  const [todos, setTodos] = useLocalStorage('todos:v1', []);
+  const [todos, setTodos] = useLocalStorage('todos:v1', [], Array.isArray);
   const [filter, setFilter] = useState('all');
 
   // setTodos from useState is stable -> these callbacks keep identity -> memo works
   const addTodo = useCallback(
-    (text) =>
-      setTodos((prev) => [...prev, { id: crypto.randomUUID(), text, completed: false }]),
+    (text) => {
+      const id = crypto.randomUUID(); // outside the updater, which must stay pure
+      setTodos((prev) => [...prev, { id, text, completed: false }]);
+    },
     [setTodos]
   );
   const toggleTodo = useCallback(
@@ -328,8 +336,8 @@ export default function App() {
 .todo-form input { flex: 1; padding: 8px 10px; }
 .todo-list { list-style: none; padding: 0; margin: 16px 0; }
 .todo-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eee; }
-.todo-item label { flex: 1; cursor: pointer; }
-.todo-item.completed label { text-decoration: line-through; color: #888; }
+.todo-text { flex: 1; overflow-wrap: anywhere; }
+.todo-item.completed .todo-text { text-decoration: line-through; color: #888; }
 .edit-input { flex: 1; padding: 6px; }
 .empty { color: #888; text-align: center; }
 .footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 14px; }
@@ -349,7 +357,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid #4f46e5; outline-
 - **Immutable updates** — `map` + spread for edit/toggle, `filter` for delete, spread for add.
 - **Derived data** — filtering/counting computed during render; nothing to keep in sync.
 - **Local edit state** — `isEditing`/`draft` live in the row, so typing re-renders one row only.
-- **`skipBlur` ref** — Esc unmounts the input, which can fire `blur` → would commit the cancelled draft. The ref prevents that.
+- **`skipBlur` ref** — Enter/Esc unmount the input, which can fire `blur` → would commit twice (Enter) or commit the cancelled draft (Esc). The ref prevents that.
 - **Keys** — `todo.id`, so toggling/deleting never remounts the wrong row or loses edit state.
 
 ---
@@ -357,23 +365,23 @@ button:focus-visible, input:focus-visible { outline: 2px solid #4f46e5; outline-
 ## 7. Edge Cases
 
 - Empty / whitespace-only add → ignored; edit to empty → deleted.
-- Corrupted JSON in `localStorage` → `try/catch` falls back to `[]`.
+- Corrupted JSON, or valid JSON of the wrong shape (e.g. `{}`), in `localStorage` → `try/catch` + `isValid` fall back to `[]`.
 - `localStorage` throws (Safari private mode, quota) → app still works in memory.
 - Filtering to a state with no matches → show a contextual empty message.
 - Deleting a todo while another is in edit mode → untouched thanks to stable keys.
 - Same text twice → allowed (IDs differ); duplicate checking is a follow-up.
-- Very long text → CSS `overflow-wrap: anywhere` on the label.
+- Very long text → CSS `overflow-wrap: anywhere` on `.todo-text`.
 - Schema changes later → versioned key (`todos:v1`).
 
 ---
 
 ## 8. Accessibility
 
-- Real `<form>`, `<button>`, `<input type="checkbox">`, `<label>` — keyboard works for free.
+- Real `<form>`, `<button>`, `<input type="checkbox">` — keyboard works for free; the checkbox is named by `aria-label={todo.text}`.
 - `aria-label` on icon-only buttons including the todo text ("Delete "Buy milk"").
 - Filter buttons use `aria-pressed` inside a `role="group"` with a label.
 - Item count in `aria-live="polite"` so screen readers hear changes.
-- Visible `:focus-visible` outlines; move focus into the edit input on edit.
+- Visible `:focus-visible` outlines; focus moves into the edit input on edit. (When editing ends the input unmounts and focus drops to `<body>` — restoring focus to the row's Edit button is a good extra.)
 - Don't convey completion with colour alone (strike-through + checkbox state).
 
 ---
@@ -398,7 +406,7 @@ Listen to the `storage` event (fires in *other* tabs) and call `setValue(JSON.pa
 </details>
 
 <details>
-<summary><strong>2. Convert state to `useReducer`. Why/when?</strong></summary>
+<summary><strong>2. Convert state to <code>useReducer</code>. Why/when?</strong></summary>
 
 Actions `ADD | TOGGLE | EDIT | DELETE | CLEAR_COMPLETED` centralise transitions, are easy to unit test, and `dispatch` is stable (no `useCallback`). Worth it once there are 4+ related transitions.
 
@@ -426,7 +434,7 @@ Add `loading/error` states, optimistic updates with rollback on failure, temp cl
 </details>
 
 <details>
-<summary><strong>6. Why `crypto.randomUUID()` rather than `Date.now()` or array index?</strong></summary>
+<summary><strong>6. Why <code>crypto.randomUUID()</code> rather than <code>Date.now()</code> or array index?</strong></summary>
 
 Index changes on delete/reorder → wrong reconciliation. `Date.now()` can collide for two adds in the same ms. UUID is unique; needs secure context, so fallback to a counter ref for older environments.
 
