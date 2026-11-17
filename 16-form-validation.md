@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -558,33 +556,3 @@ Two sources of truth: errors drift from values, you need effects to sync them, a
 - Confirm-password only validated when *its own* field changes.
 - Checkbox uses `value` instead of `checked`.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Say the words **touched**, **dirty**, **derived errors**, **pure validators** early — they signal experience. Do the form without the hook first, then extract.
-
-| Minutes | Task |
-|---|---|
-| 0–5 | Clarify, define state shape and submit state machine |
-| 5–15 | Controlled inputs + `validateSignUp` pure function |
-| 15–25 | touched logic, show errors, submit marks all touched |
-| 25–35 | Async submit, loading/success/error, double-submit guard |
-| 35–47 | Extract `useForm`, `getFieldProps`, reusable `TextField` |
-| 47–55 | a11y (labels, aria-invalid, focus first error), server field errors |
-| 55–60 | Edge cases, walk through reset, discuss async validation |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Validators are pure and tested with a few inputs
-- [ ] Errors only visible after blur or submit
-- [ ] Submit marks all touched and focuses first invalid field
-- [ ] Submitting state disables button, blocks double submit
-- [ ] Server field error shown and cleared on edit
-- [ ] `dirty` vs `touched` explained
-- [ ] Confirm password re-validates when password changes
-- [ ] `useForm` is generic (works for a login form too)
-- [ ] `aria-invalid` + `aria-describedby` + labels
-- [ ] No state update after unmount
