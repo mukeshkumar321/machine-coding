@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -412,31 +410,3 @@ Call `goTo(1)` in the same handler that changes the filter (preferred — no ext
 - Forgetting 1-based vs 0-based indexing (`slice(start, end)` is 0-based and end-exclusive).
 - Prev/Next not disabled at edges.
 
----
-
-## 12. Interview Tips & Time Plan
-
-State assumptions out loud (client-side, siblings = 1). Build the **pure range function first** — it's the part interviewers probe.
-
-| Minutes | Task |
-|---|---|
-| 0–5 | Clarify, sketch state (`page`, `pageSize`) + derived values |
-| 5–10 | Render sliced list + Prev/Next working |
-| 10–22 | `getPageRange` with ellipsis; walk through 3 examples by hand |
-| 22–30 | Page-size selector, clamping, "Showing x–y" |
-| 30–38 | Extract `usePagination`, memoize, polish CSS |
-| 38–45 | a11y (`nav`, `aria-current`), edge cases, discuss server-side |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Implement `getPageRange` from memory and test 5 inputs
-- [ ] Prev/Next disable correctly at both edges
-- [ ] Page size change keeps position (or resets) deliberately
-- [ ] Clamp when data shrinks
-- [ ] `aria-current`, `nav` landmark, keyboard usable
-- [ ] Extract everything into `usePagination`
-- [ ] Explain server-side version with `AbortController`
-- [ ] Sync page/size with URL query params
-- [ ] Re-do in 30 minutes without looking
