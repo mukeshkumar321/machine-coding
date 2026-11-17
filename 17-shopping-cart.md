@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -707,36 +705,3 @@ Keep the last removed `{item, index}` in state (or a `past` stack in the reducer
 - Index as key for cart rows → wrong row animates/focus jumps on removal.
 - Not trimming/uppercasing coupon input.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Say upfront: *"Money in cents, totals derived, reducer pure."* Build the reducer + totals first (the logic is the heart), then UI, then coupons, then persistence last. If short on time, skip the cross-tab sync and mention it.
-
-| Minute | Activity |
-| --- | --- |
-| 0–5 | Clarify (coupon rules, tax/shipping, persistence) |
-| 5–10 | State shape, actions table, component tree |
-| 10–22 | `cartReducer` + `getTotals` (cents, derived) |
-| 22–30 | `CartProvider`, `useCart` / `useCartActions` |
-| 30–42 | Product list, cart rows, qty controls, summary |
-| 42–50 | Coupon form + validation + ineligible handling |
-| 50–55 | Persistence with lazy init + safe parse |
-| 55–60 | a11y pass, edge cases, follow-ups |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Reducer with ADD / INCREMENT / DECREMENT / REMOVE / CLEAR — all immutable
-- [ ] Money in integer cents with `Intl.NumberFormat`
-- [ ] `getTotals` derived with discount, shipping threshold, tax
-- [ ] Context split into state + actions; explain why
-- [ ] Coupon form with validation messages and removal
-- [ ] Coupon re-evaluated when cart changes (min-spend)
-- [ ] localStorage persistence with lazy init + safe parse + try/catch
-- [ ] Cross-tab sync via the `storage` event
-- [ ] Variant-aware line items
-- [ ] Undo remove
-- [ ] Unit tests for the reducer and `getTotals`
-- [ ] Keyboard-only run-through with screen-reader labels

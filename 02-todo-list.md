@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -461,33 +459,3 @@ React Testing Library: type + Enter adds item; click checkbox toggles; filter hi
 - Committing on blur *and* Esc, causing cancelled edits to save.
 - Not trimming input; allowing empty todos.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Talk through state shape *before* coding. Get a working add/toggle/delete first, then layer features.
-
-| Minutes | Activity |
-| --- | --- |
-| 0–5 | Clarify requirements, state shape, component tree |
-| 5–10 | Scaffold `App`, `TodoForm`, add + list rendering |
-| 10–18 | Toggle, delete, keys, derived count |
-| 18–25 | Filters + empty states |
-| 25–33 | Inline edit (Enter/Esc/blur) |
-| 33–40 | `useLocalStorage` + error handling |
-| 40–45 | CSS polish, a11y pass, explain trade-offs, mention follow-ups |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Build from scratch in under 40 minutes without looking.
-- [ ] Add / toggle / edit / delete without mutating state.
-- [ ] Filters implemented with derived data.
-- [ ] `useLocalStorage` with lazy init + try/catch.
-- [ ] Edit: Enter saves, Esc cancels, blur saves, empty deletes.
-- [ ] `memo` + `useCallback` verified in Profiler.
-- [ ] Keyboard-only run-through works.
-- [ ] Rewrite with `useReducer`.
-- [ ] Add cross-tab sync via `storage` event.
-- [ ] Add undo/redo or drag reorder.

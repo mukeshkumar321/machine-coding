@@ -1,6 +1,6 @@
 # Stepper / Multi-Step Form — Machine Coding
 
-> **Difficulty:** Medium | **Time:** 45–60 min | **Asked at / Frequency:** Very common (onboarding/checkout flows — Razorpay, Cred, Zepto, Paytm, Stripe-style rounds) | **Tier:** 1 (must-know)
+> **Difficulty:** Medium | **Time:** 45–60 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -225,12 +225,22 @@ export default function MultiStepForm() {
 
   const formRef = useRef(null);
   const headingRef = useRef(null);
+  const prevStep = useRef(stepIndex);
 
   const step = ALL_STEPS[stepIndex];
   const isReview = step.id === 'review';
   const submitting = status === 'submitting';
 
-  // After the errors are rendered, move focus to the first invalid control.
+  // Focus the heading after the new step has rendered, so it's read with its new text.
+  // Comparing with the previous index (not a "first run" flag) keeps this StrictMode-safe.
+  useEffect(() => {
+    if (prevStep.current !== stepIndex) {
+      prevStep.current = stepIndex;
+      headingRef.current?.focus();
+    }
+  }, [stepIndex]);
+
+  // Declared after the effect above, so on a failed jump the invalid field wins the focus.
   useEffect(() => {
     if (attempt > 0) formRef.current?.querySelector('[aria-invalid="true"]')?.focus();
   }, [attempt]);
@@ -257,7 +267,7 @@ export default function MultiStepForm() {
   };
 
   const goTo = (target) => {
-    if (target === stepIndex || target < 0 || target >= ALL_STEPS.length) return;
+    if (submitting || target === stepIndex || target < 0 || target >= ALL_STEPS.length) return;
 
     if (target > stepIndex) {
       // Moving forward: every step we'd skip over must be valid.
@@ -268,7 +278,6 @@ export default function MultiStepForm() {
     }
     setErrors({});
     setStepIndex(target);
-    headingRef.current?.focus(); // announce the new step & keep keyboard users oriented
   };
 
   const submit = async () => {
@@ -368,7 +377,7 @@ function Review({ values, onEdit }) {
           <h3>
             {s.title}{' '}
             <button type="button" className="link" onClick={() => onEdit(index)}>
-              Edit<span className="sr-only"> {s.title}</span>
+              Edit <span className="sr-only">{s.title}</span>
             </button>
           </h3>
           <dl>
@@ -496,7 +505,7 @@ export default function StepIndicator({ steps, current, onSelect }) {
                   {state === 'complete' ? '✓' : i + 1}
                 </span>
                 <span className="steps__label">{s.title}</span>
-                {state === 'complete' && <span className="sr-only"> (completed)</span>}
+                {state === 'complete' && <span className="sr-only">, completed</span>}
               </button>
             </li>
           );
@@ -586,10 +595,10 @@ dl { margin: 0; }
 - **Config-driven.** `STEPS` describes fields and their `validate` functions. `validateStep(step, values)` is a pure function returning `{ field: message }`; the UI is a loop over `step.fields`. Adding a step is a data change.
 - **Single navigation function.** `goTo(target)` handles Next, Back, indicator clicks and "Edit" from review. Forward moves validate each skipped step in order and stop at the first failure (`failAt` jumps *to that step* and shows its errors) — which also fixes the sneaky bug where a user goes back, breaks an earlier field, then clicks a later step in the indicator.
 - **Errors only for the visible step**, cleared on navigation, and cleared per-field as the user edits it. `onBlur` validates a field for early feedback.
-- **Focus management.** On a successful step change the `<h2 tabIndex={-1}>` gets focus (screen readers announce "Step 2 of 4: Address"). On failure, a counter `attempt` triggers an effect which, *after* errors have rendered, focuses the first `[aria-invalid="true"]` element. Using a counter (rather than a boolean) makes repeated failed attempts re-focus.
+- **Focus management.** When `stepIndex` changes, an effect focuses the `<h2 tabIndex={-1}>` *after* the new step has rendered (so screen readers announce "Step 2 of 4: Address", not the old text). On failure, a counter `attempt` triggers a second effect which, *after* errors have rendered, focuses the first `[aria-invalid="true"]` element (declared later, so it wins when a failed jump also changes step). Using a counter (rather than a boolean) makes repeated failed attempts re-focus.
 - **Real `<form>` with `noValidate`.** Enter submits → `handleSubmit` → Next or Submit. We use our own validation messages instead of the browser's tooltips.
-- **Keyed Next/Submit buttons** so React mounts a fresh element instead of mutating the Next node into the Submit node. (The classic bug: a `type="button"` Next that React turns into a `type="submit"` button during the same click, which then submits the form immediately.)
-- **Submit** re-validates *all* data steps (never trust that earlier steps are still valid), guards against double submission with `status`, and handles failure with an error message.
+- **Keyed Next/Submit buttons** (defensive) so React mounts a fresh element instead of mutating the Next node into the Submit node. Here both are `type="submit"` so it's harmless, but if Next were a `type="button"` with an `onClick` and React flipped that same node to `type="submit"` during the click, the browser's default action would submit the form immediately. Keys make that impossible.
+- **Submit** re-validates *all* data steps (never trust that earlier steps are still valid), guards against double submission with `status` (and `goTo` ignores navigation while submitting), and handles failure with an error message.
 - **Progress** is derived: `percent = current / (n-1)`, no extra state.
 
 ---
@@ -613,7 +622,7 @@ dl { margin: 0; }
 
 ## 8. Accessibility
 
-- Progress indicator is a `<nav aria-label="Progress">` with an ordered list; the current step uses **`aria-current="step"`**, completed steps get visually-hidden "(completed)". Don't rely on colour alone — markers show ✓ / numbers.
+- Progress indicator is a `<nav aria-label="Progress">` with an ordered list; the current step uses **`aria-current="step"`**, completed steps get visually-hidden ", completed" text. Don't rely on colour alone — markers show ✓ / numbers.
 - `role="progressbar"` with `aria-valuenow` for the bar (or hide it if it's purely decorative and the list already conveys it).
 - Each control has a `<label htmlFor>`; errors are linked via `aria-describedby` and flagged with `aria-invalid`; messages use `role="alert"` so they're announced.
 - **Focus moves** to the step heading on navigation and to the first invalid field on failure — otherwise keyboard/screen-reader users are stranded on a button that just disappeared.

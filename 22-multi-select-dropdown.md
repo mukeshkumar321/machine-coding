@@ -1,6 +1,6 @@
 # Multi-Select Dropdown — Machine Coding
 
-> **Difficulty:** Hard · **Time:** 60 min · **Asked at / Frequency:** Commonly reported at product companies (Atlassian, Razorpay, Uber, Flipkart) — High · **Tier:** 2
+> **Difficulty:** Hard | **Time:** 60 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -274,7 +274,7 @@ export default function MultiSelect({
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
-            setActive(0);
+            setActive(e.target.value ? 1 : 0); // first match, so Enter doesn't hit "Select all"
           }}
           onKeyDown={onKeyDown}
         />
@@ -520,7 +520,7 @@ Render hidden inputs (`<input type="hidden" name="langs" value={v}>` per selecte
 - Mutating `value` (`value.push`) instead of returning a new array.
 - "Select all" ignoring the filter, or not showing a partial state.
 - Using index as `key`, or using labels as values (duplicates).
-- Active index not reset on query change / not clamped when the list shrinks.
+- Active index not reset on query change / not clamped when the list shrinks (and Enter-after-typing hitting "Select all" instead of the first match).
 - `Enter` submitting the surrounding form (forgot `preventDefault`).
 - Tab doesn't close the list → floating menu left behind.
 - Chip × click bubbling to the control and reopening the list.

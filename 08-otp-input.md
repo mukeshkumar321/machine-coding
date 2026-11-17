@@ -1,6 +1,6 @@
 # OTP Input — Machine Coding
 
-> **Difficulty:** Medium | **Time:** 35–45 min | **Asked at / Frequency:** Very common at fintech/e-commerce (Paytm, PhonePe, Razorpay, Flipkart, Swiggy) | **Tier:** 1 (must-know)
+> **Difficulty:** Medium | **Time:** 35–45 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -325,7 +323,7 @@ export default function App() {
 ## 6. How It Works
 
 - **`values` array + `inputsRef` array.** State drives what's shown; refs are only for the imperative `focus()`/`select()` calls — focus is not something you can express declaratively.
-- **`fillFrom(start, digits)`** is the core. Typing one digit = `fillFrom(i, '5')`. Mobile SMS autofill dispatches one `change` with the whole code (`'123456'`) = `fillFrom(i, '123456')`. Paste = `fillFrom(0, code)`. One function, three features.
+- **`fillFrom(start, digits)`** is the core. Typing one digit = `fillFrom(i, '5')`. Mobile SMS autofill dispatches one `change` with the whole code (`'123456'`) = `fillFrom(i, '123456')`. Paste = `fillFrom(0, code)` for a full-length code, `fillFrom(i, digits)` for a partial one. One function, three features.
 - **We copy before writing** (`[...values]`) — no state mutation.
 - **No `maxLength=1`** — it silently truncates autofill and some IME input before our handler sees it. We sanitise ourselves.
 - **`onFocus → select()`** means typing over an existing digit *replaces* it instead of producing `"12"`.
@@ -348,6 +346,7 @@ export default function App() {
 - Clicking into the middle of a partially-filled OTP → allowed; typing continues forward from there.
 - Editing a cell after completion → `onComplete` fires again when full; document or guard if the parent should only submit once.
 - Cursor placement: `caret-color: transparent` hides the caret since each box has one char.
+- Some Android soft keyboards report `e.key === 'Unidentified'` for Backspace, so the empty-cell Backspace branch may not fire there; a robust fix listens to `beforeinput` (`inputType === 'deleteContentBackward'`) instead. Test on a real device.
 - Strict Mode: auto-focus effect runs twice — harmless.
 - `length` prop changes at runtime: `values` length won't follow (initial state only). Remount with `key={length}`.
 
@@ -359,7 +358,7 @@ export default function App() {
 - `inputMode="numeric"` + `pattern="\d*"` → numeric keypad on mobile.
 - `autoComplete="one-time-code"` on the first box enables iOS/Android SMS suggestion.
 - `aria-invalid` on error plus a visible error message in an `aria-live="polite"` region.
-- Don't `type="number"`: it adds spinners, allows `e`/`-`, and breaks `select()`/caret APIs.
+- Don't `type="number"`: it adds spinners, allows `e`/`-`, and doesn't support the caret/selection-range APIs (`setSelectionRange`).
 - Never remove focus outlines; provide a visible `:focus` style (done).
 - Arrow keys give keyboard users the same navigation as mouse users; Tab still moves through the boxes in order.
 - Alternative pattern worth mentioning: a **single** transparent input with N visual boxes — simpler for screen readers and autofill.
@@ -394,7 +393,7 @@ Change the sanitiser regex from `/\D/g` to `/[^a-z0-9]/gi`, drop `inputMode="num
 <details>
 <summary><strong>3. How do you implement a masked (PIN) variant?</strong></summary>
 
-Use `type="password"` on the inputs (keeps `value` real, hides the glyph) — or render a bullet and keep the real values in state. Remember `autoComplete="one-time-code"` still works with password type on most browsers.
+Use `type="password"` on the inputs (keeps `value` real, hides the glyph) — or render a bullet and keep the real values in state. With `type="password"`, browsers/password managers may treat the field as a credential, so verify SMS autofill and `autoComplete` behaviour on real devices.
 
 </details>
 
@@ -449,35 +448,3 @@ Accept `value` as a string, derive `values = Array.from({length}, (_, i) => valu
 - Firing `onComplete` from an effect → duplicate calls.
 - Missing `aria-label`s — every box reads as "edit text".
 
----
-
-## 12. Interview Tips & Time Plan
-
-Get the happy path working early (type → advance), then Backspace, then arrows, then paste. Mention that paste/autofill/typing share `fillFrom`. Test aloud: "type 3 digits, backspace twice, paste 6 digits".
-
-| Minute | Activity |
-| --- | --- |
-| 0–5 | Clarify (numeric? length? paste? masking?) |
-| 5–8 | State shape (`values[]` + `refs[]`), event table |
-| 8–18 | Render N inputs, controlled `onChange`, auto-advance, auto-focus first |
-| 18–25 | Backspace + arrow/Home/End navigation |
-| 25–32 | Paste + autofill via `fillFrom` |
-| 32–37 | CSS: focus ring, error state, responsive |
-| 37–42 | `onComplete`, a11y attributes, edge cases |
-| 42–45 | Follow-ups (Web OTP API, resend timer) |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Render N inputs with refs array and auto-focus the first
-- [ ] Digits-only filtering; auto-advance
-- [ ] Backspace (empty → go back & clear)
-- [ ] Arrow Left/Right, Home/End
-- [ ] Paste of full and partial codes (with spaces/dashes)
-- [ ] `onComplete` fires exactly when full
-- [ ] Error + disabled states; reset via `key`
-- [ ] `inputMode`, `autoComplete="one-time-code"`, `aria-label`s
-- [ ] Resend countdown timer with cleanup
-- [ ] Rebuild as a single-input-with-boxes variant
-- [ ] Explain why `maxLength` and `type="number"` are avoided

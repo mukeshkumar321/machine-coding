@@ -1,6 +1,6 @@
 # Like Button with Optimistic Update — Machine Coding
 
-> **Difficulty:** Medium | **Time:** 30–45 min | **Asked at / Frequency:** Common (Meta/Instagram-style, Twitter/X, LinkedIn, Dream11, ShareChat) — tests async reasoning | **Tier:** 1 (must-know)
+> **Difficulty:** Medium | **Time:** 30–45 min | **Frequency:** ⭐⭐⭐
 
 ## Table of Contents
 
@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -274,7 +272,7 @@ export default function App() {
           checked={failures}
           onChange={(e) => {
             setFailures(e.target.checked);
-            apiConfig.failureRate = e.target.checked ? 0.5 : 0;
+            apiConfig.failureRate = e.target.checked ? 0.3 : 0;
           }}
         />{' '}
         Simulate random API failures
@@ -314,6 +312,7 @@ export default function App() {
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
@@ -459,35 +458,3 @@ Move `{liked, count}` into a shared store keyed by `postId` (Context + reducer, 
 - Mutating the state object (`state.count++`).
 - Changing the label to "Unlike" *and* using `aria-pressed`.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Narrate the invariant: *"UI shows intent; the server shows truth; one in-flight request at a time; rollback goes to the last confirmed state."* Draw the double-click timeline — it shows you've thought about races. Build the naive version first (optimistic + rollback), then explicitly add race handling.
-
-| Minute | Activity |
-| --- | --- |
-| 0–4 | Clarify (idempotent API? failure UX? rapid clicks?) |
-| 4–8 | State design: `state` vs `confirmed` vs `desired`, timeline sketch |
-| 8–14 | Mock API (latency + random fail) |
-| 14–24 | Naive optimistic toggle + rollback in a hook |
-| 24–32 | Add `inFlight` serialization + coalescing loop |
-| 32–38 | Button UI, CSS, aria-pressed, error + status |
-| 38–45 | Edge cases (unmount, Strict Mode), follow-ups |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Optimistic toggle with a functional state update
-- [ ] Mock API with latency and random failures
-- [ ] Rollback to last confirmed state; show an error
-- [ ] Explain why the button must not be disabled
-- [ ] Serialize requests with a ref flag; coalesce to the latest intent
-- [ ] Draw and explain the double-click timeline
-- [ ] Guard against unmount (and understand Strict Mode)
-- [ ] Add retry with backoff for an idempotent API
-- [ ] Implement the "latest request id wins" variant and compare trade-offs
-- [ ] Rebuild with React Query `onMutate`/`onError`/`onSettled`
-- [ ] Rebuild with React 19 `useOptimistic`
-- [ ] Share state between two buttons via a store

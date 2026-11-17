@@ -1,6 +1,6 @@
 # Modal / Dialog — Machine Coding
 
-> **Difficulty:** Medium | **Time:** 40–45 min | **Asked at / Frequency:** Very common (design-system / UI-component rounds, a11y-focused interviewers love it) — ⭐⭐⭐⭐⭐ | **Tier:** 1 (must know)
+> **Difficulty:** Medium | **Time:** 40–45 min | **Frequency:** ⭐⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -141,27 +141,21 @@ export function useFocusTrap(containerRef) {
     const handleKeyDown = (e) => {
       if (e.key !== 'Tab') return;
       const items = getFocusable();
-      if (items.length === 0) {
-        e.preventDefault();
-        node.focus();
-        return;
-      }
-      const first = items[0];
-      const last = items[items.length - 1];
+      const first = items[0] ?? node;
+      const last = items[items.length - 1] ?? node;
       const active = document.activeElement;
+      const atEdge = e.shiftKey ? active === first || active === node : active === last;
 
-      if (e.shiftKey && (active === first || active === node)) {
+      // Also pull focus back if it escaped the dialog (e.g. after an overlay click).
+      if (!node.contains(active) || atEdge) {
         e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
+        (e.shiftKey ? last : first).focus();
       }
     };
 
-    node.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      node.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
       previouslyFocused?.focus?.(); // return focus to the trigger
     };
   }, [containerRef]);
@@ -388,7 +382,7 @@ Yes: `dialog.showModal()` gives top-layer rendering, focus trapping, Esc handlin
 </details>
 
 <details>
-<summary><strong>5. Why `inert` on the background rather than just focus trap?</strong></summary>
+<summary><strong>5. Why <code>inert</code> on the background rather than just a focus trap?</strong></summary>
 
 A trap only handles the Tab key. Screen reader virtual cursors, mobile swipe navigation, and clicks can still reach the page behind. `inert` (or `aria-hidden` + focus management) removes it from interaction and the accessibility tree.
 

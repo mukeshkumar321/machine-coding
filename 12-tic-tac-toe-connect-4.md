@@ -1,6 +1,6 @@
 # Tic-Tac-Toe (N × N) & Connect-4 — Machine Coding
 
-> **Difficulty:** Medium · **Time:** 45 min · **Asked at / Frequency:** Commonly reported at product companies (Flipkart, Swiggy, PhonePe, Amazon) — Very High (classic; the N×N / undo / Connect-4 twists are the real test) · **Tier:** 1
+> **Difficulty:** Medium | **Time:** 45 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -446,7 +446,7 @@ button.link[aria-current='step'] { font-weight: 700; text-decoration: underline;
 ## 8. Accessibility
 
 - Cells/columns are real `<button>`s → focusable, Enter/Space work.
-- Descriptive `aria-label`s: "Row 2, column 3, X"; Connect-4 columns: "Drop a disc in column 4" (discs are decorative `aria-hidden`).
+- Descriptive `aria-label`s: "Row 2, column 3, X"; Connect-4 columns: "Drop a disc in column 4" (discs are decorative `aria-hidden`, so screen-reader users learn the board state only from the status text — in a real app also announce each move, e.g. "Red dropped in column 4").
 - `role="status"` / `aria-live="polite"` announces turn changes and the result.
 - Don't encode players by colour only: use letters in TTT; for Connect-4 add a pattern/label in the status and consider ✕/○ marks inside discs for colour-blind users.
 - Disabled buttons after game over; visible focus ring.

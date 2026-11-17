@@ -33,8 +33,6 @@ Every question file follows the same structure:
 9. Performance Considerations
 10. Follow-up Questions
 11. Common Mistakes
-12. Interview Tips & Time Plan
-13. Practice Checklist
 
 ## 📚 Questions
 

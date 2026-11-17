@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -412,32 +410,3 @@ Jest fake timers (`jest.useFakeTimers()`, `advanceTimersByTime`) and mock `perfo
 - Not disabling inputs while running.
 - Putting the ticking state in `App` so everything re-renders each tick.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Say "I'll measure time, not count ticks" early — it signals experience. Build counter first (2 minutes), then the hook.
-
-| Minutes | Activity |
-| --- | --- |
-| 0–4 | Clarify; sketch state/refs; explain drift |
-| 4–8 | Counter with functional updates |
-| 8–20 | `useStopwatch` (start/pause/reset + cleanup) |
-| 20–27 | Stopwatch UI + `formatTime` |
-| 27–38 | Timer (duration inputs, remaining, auto-stop) |
-| 38–45 | Edge cases, a11y, discuss rAF / persistence / laps |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Counter using functional updates.
-- [ ] Reproduce the stale-closure interval bug, then fix it two ways.
-- [ ] Stopwatch with start/pause/resume/reset.
-- [ ] Verify no leaked intervals (unmount while running).
-- [ ] Prove drift with a counting approach vs the clock approach.
-- [ ] Timer stops at zero and handles invalid input.
-- [ ] Add lap times.
-- [ ] Persist timer across reloads using `endAt`.
-- [ ] Rebuild the display using `requestAnimationFrame`.
-- [ ] Write fake-timer tests.

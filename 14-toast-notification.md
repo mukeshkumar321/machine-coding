@@ -1,6 +1,6 @@
 # Toast Notification — Machine Coding
 
-> **Difficulty:** Medium | **Time:** 45–60 min | **Asked at / Frequency:** Product companies & startups (Atlassian, Flipkart, Razorpay, Swiggy) — very common | **Tier:** 1 (must-know)
+> **Difficulty:** Medium | **Time:** 45–60 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -38,7 +36,7 @@ Toasts stack in a corner of the screen, disappear automatically after a timeout,
 
 ### Functional
 
-- `ToastProvider` + `useToast()` hook exposing `show`, `success`, `error`, `info`, `dismiss`.
+- `ToastProvider` + `useToast()` hook exposing `show`, `success`, `error`, `info`, `dismiss`, `clear`.
 - Types: `success | error | info` (different colour/icon).
 - **Auto-dismiss** after `duration` ms (default 4000). `duration: null` = sticky.
 - **Pause on hover** (and on keyboard focus); resume with the *remaining* time, not a full restart.
@@ -410,10 +408,10 @@ export default function App() {
 ## 7. Edge Cases
 
 - Dismiss clicked at the same moment the timer fires → `REMOVE` is idempotent (filter on a missing id is a no-op).
-- Pointer is already over the toast when it mounts (a new toast appears under the cursor): `mouseenter` fires, so it starts paused — acceptable; mention it.
+- Pointer is already over the toast when it mounts (a new toast appears under a stationary cursor): browsers usually fire `mouseenter` on the next pointer move, which then pauses it — acceptable; mention it.
 - Toast removed while hovered → component unmounts, cleanup clears timer.
 - Many toasts fired in a loop → unique ids from the ref counter; the queue handles overflow.
-- `duration: 0` / `null` → sticky (`== null` check). Decide whether `0` means "instant" or "sticky" and document it.
+- Only `duration: null` is sticky. `duration: 0` is *not* sticky — `setTimeout(…, 0)` dismisses it immediately; decide whether you want `0` to mean sticky instead and document it.
 - React 18 Strict Mode: effect runs → cleanup → runs again; elapsed ≈ 0 so `remaining` is essentially unchanged.
 - Tab hidden: `setTimeout` is throttled but still fires; optionally pause on `visibilitychange`.
 - Message very long → `word-break` + max-width.
@@ -423,7 +421,7 @@ export default function App() {
 
 ## 8. Accessibility
 
-- Container is a **live region** (`aria-live="polite"`); individual toasts use `role="status"`, errors use `role="alert"` (assertive).
+- Container is a **live region** (`aria-live="polite"`); individual toasts use `role="status"`, errors use `role="alert"` (assertive). Nesting live regions can make some screen readers announce twice — if that shows up in testing, keep the roles on the toasts and drop `aria-live` from the container (or the reverse).
 - The live region must exist **before** content is injected — that's why the container is always rendered.
 - Pause on **keyboard focus** as well as hover (WCAG 2.2.1 Timing Adjustable) — users need enough time to read/act.
 - Close button has an `aria-label`; decorative icon has `aria-hidden`.
@@ -437,7 +435,7 @@ export default function App() {
 - Memoized context value → consumers don't re-render on list changes.
 - Only ≤ `MAX_VISIBLE` DOM nodes and timers exist at any time.
 - Progress animation uses `transform` on the compositor, not `width`.
-- Each `Toast` re-renders only on its own hover/focus state; the parent re-renders only on add/remove.
+- Each `Toast` re-renders on its own hover/focus state and, because it isn't memoized, whenever the provider re-renders (add/remove).
 - If toasts carried heavy content, wrap `Toast` in `React.memo` (props: `toast` object is stable per id, `onDismiss` is stable).
 
 ---
@@ -461,7 +459,7 @@ Expose a module-level store/event emitter: `toastStore.show(...)` pushes into a 
 <details>
 <summary><strong>3. How would you support different positions?</strong></summary>
 
-Group toasts by `position` and render one container per position, each with its own modifier class (`.toast-container--bottom-center`). For bottom positions, use `flex-direction: column-reverse`.
+Group toasts by `position` and render one container per position, each with its own modifier class (`.toast-container--bottom-center`). For bottom positions anchor the container with `bottom` instead of `top`; choose `column` vs `column-reverse` depending on whether the newest toast should sit nearest the screen edge.
 
 </details>
 
@@ -489,7 +487,7 @@ Accept `action: { label, onClick }` in options; render a button in the toast tha
 <details>
 <summary><strong>7. How do you test it?</strong></summary>
 
-Use fake timers (`jest.useFakeTimers()`), render a component calling `toast.success`, advance time by `duration`, and assert removal. For pause: `userEvent.hover`, advance time, assert still present; unhover, advance the remaining time, assert gone. Queue: fire 5, assert 3 in DOM, dismiss one, assert 4th appears.
+Use fake timers (`jest.useFakeTimers()` / `vi.useFakeTimers()`), render a component calling `toast.success`, advance time by `duration`, and assert removal. For pause: `userEvent.hover`, advance time, assert still present; unhover, advance the remaining time, assert gone. Queue: fire 5, assert 3 in DOM, dismiss one, assert 4th appears.
 
 </details>
 
@@ -515,35 +513,3 @@ Remove the slice, make the container `max-height: 100vh; overflow-y: auto`, and 
 - Rendering inline instead of a portal → clipped by parent `overflow`.
 - Forgetting `pointer-events: none` on the container → invisible area blocks clicks on the page.
 
----
-
-## 12. Interview Tips & Time Plan
-
-State the design decision out loud: *"provider holds the list, each toast owns its timer — so the queue is just a slice."* Build the basic version first (add + auto-dismiss), then layer on pause, queue, portal.
-
-| Minute | Activity |
-| --- | --- |
-| 0–5 | Clarify requirements, agree on API (`useToast().success(msg, opts)`) |
-| 5–10 | Sketch state shape, tree, decide timer ownership |
-| 10–20 | Provider + reducer + `useToast` + basic `Toast` rendering |
-| 20–28 | Auto-dismiss effect with cleanup |
-| 28–35 | CSS: container, stacking, types, enter animation |
-| 35–42 | Pause on hover (remaining time), queue via slice |
-| 42–48 | Portal, a11y attributes, progress bar |
-| 48–55 | Walk through edge cases, answer follow-ups |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Build provider + `useToast` with a reducer from scratch in < 15 min
-- [ ] Auto-dismiss with proper timer cleanup
-- [ ] Pause on hover and resume with remaining time
-- [ ] Queue with max visible via `slice`
-- [ ] Render through a portal
-- [ ] Memoize the context API (explain why)
-- [ ] Add exit animation (`closing` state)
-- [ ] Add action button (Undo) and sticky toasts
-- [ ] Support multiple positions
-- [ ] Trigger toasts from outside React with an external store
-- [ ] Write 3 tests using fake timers

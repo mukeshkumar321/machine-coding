@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -563,38 +561,3 @@ When `query` is empty and the input is focused, display `recent` items from `loc
 - Using `dangerouslySetInnerHTML` for highlighting (XSS).
 - Skipping ARIA / keyboard support.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Say the three keywords early: **debounce, abort/race, cache.** Build incrementally: static filter → debounced async → keyboard → ARIA → polish. Use a mock API with random delay so you can *demonstrate* the race fix.
-
-| Minutes | Activity |
-| --- | --- |
-| 0–5 | Clarify requirements; sketch state + data flow |
-| 5–12 | Input + dropdown with local filtering |
-| 12–20 | `useDebounce` + async mock API + loading/empty states |
-| 20–30 | `AbortController` race handling + error state |
-| 30–36 | Cache with `useRef(Map)` |
-| 36–46 | Keyboard navigation + select + blur/click handling |
-| 46–54 | ARIA combobox attributes + live region + highlight |
-| 54–60 | Edge cases, discuss follow-ups (React Query, worker, LRU) |
-
-If time is short (45 min): skip highlight and live region, but *mention* them.
-
----
-
-## 13. Practice Checklist
-
-- [ ] Debounce hook written from memory (with cleanup).
-- [ ] Async search effect with `AbortController` and `AbortError` handling.
-- [ ] Reproduce the race condition without abort, then fix it.
-- [ ] `Map` cache in `useRef`; explain why not state.
-- [ ] Loading / empty / error states.
-- [ ] ↑ ↓ Enter Esc with wrap-around and `scrollIntoView`.
-- [ ] Mouse selection works (blur vs click solved).
-- [ ] ARIA combobox + `aria-activedescendant`.
-- [ ] Highlight match without `dangerouslySetInnerHTML`.
-- [ ] Swap the mock for a real `fetch` API.
-- [ ] Add LRU/TTL cache or React Query version.
-- [ ] Add recent searches or multi-select.

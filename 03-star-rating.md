@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -361,33 +359,3 @@ Usually unnecessary. If needed: use `onPointerMove` + `requestAnimationFrame` th
 - Not clamping `value` to `[0, count]`.
 - Forgetting controlled mode, so parent can't reset the rating.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Show the `hover ?? rating` idea early; interviewers love the one-formula fill percentage for half/fractional stars.
-
-| Minutes | Activity |
-| --- | --- |
-| 0–4 | Clarify (half stars? clear? controlled?), state shape |
-| 4–12 | Render stars, click to set, whole stars |
-| 12–18 | Hover preview + mouseleave |
-| 18–26 | Half-star via pointer position + layered fill |
-| 26–30 | Read-only mode & controlled/uncontrolled |
-| 30–36 | Keyboard + ARIA slider |
-| 36–40 | CSS polish, edge cases, follow-ups |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Whole-star rating with click.
-- [ ] Hover preview that resets on leave.
-- [ ] Derived `display = hover ?? rating` (no duplicate state).
-- [ ] Half stars via pointer position.
-- [ ] Fractional read-only display (e.g. 3.7).
-- [ ] Controlled + uncontrolled support.
-- [ ] Keyboard: arrows, Home, End.
-- [ ] ARIA slider + read-only `img`.
-- [ ] "Click to clear" option.
-- [ ] Re-implement with radio inputs and compare trade-offs.

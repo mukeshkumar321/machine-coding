@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -610,36 +608,3 @@ Debounce waits for a pause (best for "search as you type" → fewer network call
 - Using the array index as `key` for results.
 - Treating every filter change as `pushState` (including typing) or every change as `replaceState` (Back does nothing).
 
----
-
-## 12. Interview Tips & Time Plan
-
-Open with the principle: *"The URL is the single source of truth; the UI state is derived."* Then build in layers: static list → pure `filterProducts` → URL hook → checkboxes → debounce → polish. The debounce + URL echo subtlety is where strong candidates stand out — mention it even if you run out of time.
-
-| Minute | Activity |
-| --- | --- |
-| 0–5 | Clarify (client vs server filtering, router allowed?, history policy) |
-| 5–10 | URL schema, data flow diagram, component tree |
-| 10–18 | Mock data + pure `parseFilters` / `filterProducts` |
-| 18–30 | `useQueryParams` (`useSyncExternalStore`, push/replace, popstate) |
-| 30–42 | Filters UI: checkboxes, price, rating, sort, clear all |
-| 42–50 | Debounced `SearchBox` with URL ⇄ text sync |
-| 50–55 | Empty state, count, a11y |
-| 55–60 | Edge cases, follow-ups (server-side, pagination) |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Pure `filterProducts` (AND across filters, OR within) with unit tests
-- [ ] `useQueryParams` using `useSyncExternalStore` + `popstate` + custom event
-- [ ] Explain why `pushState` needs a manual event
-- [ ] Multi-select params with `getAll` / `append`
-- [ ] Push vs replace history policy
-- [ ] Debounced input that doesn't lose characters (URL echo handled)
-- [ ] Validate/ignore invalid params
-- [ ] Clear all + empty state
-- [ ] Reset `page` on filter change
-- [ ] Server-side variant with `AbortController`
-- [ ] Facet counts per option
-- [ ] Replace the custom hook with React Router's `useSearchParams`

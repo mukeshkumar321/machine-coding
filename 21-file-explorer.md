@@ -1,6 +1,6 @@
 # File Explorer (Folder Tree) — Machine Coding
 
-> **Difficulty:** Hard · **Time:** 60 min · **Asked at / Frequency:** Commonly reported at product companies (Atlassian, Uber, Microsoft, Flipkart) — Very High · **Tier:** 1
+> **Difficulty:** Hard | **Time:** 60 min | **Frequency:** ⭐⭐⭐⭐⭐ (very common in product-company UI rounds)
 
 ## Table of Contents
 
@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -487,7 +485,7 @@ li:focus-visible > .row { outline: 2px solid #2563eb; outline-offset: -2px; }
 
 - **Recursion** — `TreeNode` renders its own children when it's a folder and is open. Closed folders render nothing below them, so cost scales with *visible* nodes.
 - **Expansion is separate from data** (`Set<id>`): renaming/adding doesn't reset what the user opened, and "add inside a collapsed folder" just adds the id to the set.
-- **Immutable ops with structural sharing** — `updateNode`/`removeNode` return the *same node reference* when nothing below changed, so only the path to the target is copied. `React.memo` on `TreeNode` would skip untouched branches.
+- **Immutable ops with structural sharing** — `updateNode`/`removeNode` return the *same node reference* when nothing below changed, so only the path to the target is copied. `React.memo` on `TreeNode` could then skip untouched branches (with the single context above, see the caveat in section 9).
 - **One `editing` object** guarantees a single inline input (create *or* rename). Blur/Esc cancels; Enter validates then commits.
 - **Validation lives in a pure function** (`validateName(name, siblings, ignoreId)`); `ignoreId` lets a rename keep its own name (or change casing).
 - **Ids** come from a counter (`makeNode`) called in the event handler, not in the reducer, so the reducer stays pure.
@@ -603,33 +601,3 @@ Serialize `tree` and `[...expanded]` to `localStorage` in a `useEffect` (debounc
 - Deleting a folder without removing its children (using a flat structure and leaving orphans).
 - Not handling blur / Esc on the inline input (stuck input).
 
----
-
-## 12. Interview Tips & Time Plan
-
-Start by asking "nested or flat?" and say "immutable path-copy". Get recursion + expand/collapse working first — it's what's scored; CRUD builds on `updateNode`.
-
-| Minutes | Task |
-|---|---|
-| 0–5 | Clarify, node shape, state split (data vs `expanded`) |
-| 5–15 | Recursive `TreeNode`, indentation, expand/collapse with `Set` |
-| 15–25 | `updateNode` + add file/folder with inline input |
-| 25–35 | Rename and delete (`removeNode`), `editing` state |
-| 35–43 | Validation (empty / duplicate / invalid chars), sorting, auto-expand |
-| 43–52 | Keyboard + ARIA tree roles, focus styles |
-| 52–60 | Edge cases, discuss normalisation / virtualisation / DnD |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Recursive rendering with indentation and icons
-- [ ] Expand/collapse via `Set` of ids
-- [ ] `updateNode` / `removeNode` return unchanged refs for untouched branches
-- [ ] Add file/folder inline; folder auto-expands
-- [ ] Rename inline: Enter/Esc/blur behaviour
-- [ ] Delete subtree, root protected
-- [ ] Name validation (empty, `/`, duplicates)
-- [ ] Folders-first sorting without mutating state
-- [ ] `role="tree"`, `treeitem`, `aria-expanded`, keyboard shortcuts
-- [ ] Explain normalised model, virtualisation, drag & drop

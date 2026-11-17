@@ -1,6 +1,6 @@
 # Tabs — Machine Coding
 
-> **Difficulty:** Easy–Medium | **Time:** 35–45 min | **Asked at / Frequency:** Very common (UI-component / design-system style rounds) — ⭐⭐⭐⭐ | **Tier:** 1 (must know)
+> **Difficulty:** Easy–Medium | **Time:** 35–45 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -282,10 +280,11 @@ export default function App() {
 - `value` pointing to a missing/disabled id → falls back to first enabled.
 - All tabs disabled → `enabledIds` empty: nothing selected; `handleKeyDown` can't run because buttons are disabled (still avoid dividing/indexing `undefined`).
 - Items change dynamically (tab removed while active) → derived `activeId` falls back; a controlled parent should update `value`.
-- Switching controlled ⇄ uncontrolled at runtime → React-style warning; avoid.
+- Switching controlled ⇄ uncontrolled at runtime → this hook doesn't warn (React's `<input>` does); behaviour silently changes, so avoid it or add a dev-only warning.
 - Only one tab → arrows are no-ops (modulo returns same).
 - Many tabs overflow → horizontal scroll (`overflow-x: auto`) and `scrollIntoView` on select.
 - Rapid arrow presses → each updates state; no async hazards.
+- Controlled parent rejects a change (keeps `value`) → keyboard focus has already moved to the new tab while selection hasn't; if that matters, don't move focus until `value` actually changes.
 - Heavy panel content + automatic activation → consider manual activation or lazy mount.
 
 ---
@@ -377,33 +376,3 @@ So the parent can drive tabs from other UI (deep links, wizard "Next" buttons, v
 - Mutating `items` or storing the active *item object* (goes stale) instead of its id.
 - Unmounting inactive panels and silently losing form input (when users expect it to be kept).
 
----
-
-## 12. Interview Tips & Time Plan
-
-State up front: "one piece of state, `activeId`, via a controllable hook." Do the click version first, then keyboard, then ARIA.
-
-| Minutes | Activity |
-| --- | --- |
-| 0–5 | Clarify (controlled?, activation, vertical?), design API |
-| 5–12 | Basic tabs: render list + panel, click to select |
-| 12–20 | `useControllableState`; demo both modes |
-| 20–30 | Keyboard nav with roving tabindex + refs, skip disabled |
-| 30–36 | ARIA roles/ids with `useId` |
-| 36–42 | CSS, vertical orientation, `keepMounted` |
-| 42–45 | Edge cases, follow-ups (manual activation, compound API) |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Basic tabs with click selection.
-- [ ] Uncontrolled via `defaultValue`.
-- [ ] Controlled via `value` + `onChange`.
-- [ ] Arrow/Home/End with wrap-around, skipping disabled.
-- [ ] Roving tabindex verified with keyboard only.
-- [ ] `tablist`/`tab`/`tabpanel` ARIA wired with unique ids.
-- [ ] Safe fallback for invalid `value`.
-- [ ] `keepMounted` option.
-- [ ] Vertical orientation + RTL handling.
-- [ ] Rebuild as compound components with context.

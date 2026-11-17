@@ -1,6 +1,6 @@
 # Progress Bars — Machine Coding
 
-> **Difficulty:** Easy–Medium | **Time:** 30–45 min | **Asked at / Frequency:** Very common warm-up at Flipkart, Uber, Atlassian, PhonePe, Adobe | **Tier:** 1 (must-know)
+> **Difficulty:** Easy–Medium | **Time:** 30–45 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -359,11 +357,11 @@ Swap `<Bar>` for `<RafBar>` in `App.jsx` — it takes the same props (`done` is 
 ## 7. Edge Cases
 
 - Rapid clicks on Add (50 bars) → only N run; others queued; no timers to leak.
-- Lowering concurrency while bars are running → running bars finish (their `filled` state is already true), new bars wait until the count drops. Say this explicitly; cancelling mid-flight is a design choice.
+- Lowering concurrency while bars are running → running bars finish (their `filled` state is already true), new bars wait until the count drops. Say this explicitly; cancelling mid-flight is a design choice. (The rAF variant behaves differently: a bar that leaves the active window pauses and resumes later.)
 - Raising concurrency while bars are queued → queued bars start immediately on the next render.
 - Reset while bars are running → components unmount; pending rAFs are cancelled in cleanup; no `DONE` dispatch after unmount (the transition never ends).
 - `transitionend` doesn't fire if the element becomes `display: none` or the transition is disabled (e.g. a blanket `prefers-reduced-motion` rule setting `transition: none`) → bar would hang. Provide a fallback (e.g. `setTimeout(duration)` backup or skip the animation and complete immediately).
-- Background tab: transitions are still completed by the browser; rAF is paused, so the rAF variant stalls while hidden. Timestamp-based math means it jumps to the right value when the tab returns.
+- Background tab: rAF is paused while the tab is hidden, so the rAF variant stalls; timestamp-based math makes it jump to the right value when the tab returns. CSS transitions keep their timeline, but `transitionend` may only be delivered once the tab is visible again, so the next queued bar can start late.
 - Strict Mode double effects → effect cleanup cancels rAF; second run re-schedules. Safe.
 
 ---
@@ -371,7 +369,7 @@ Swap `<Bar>` for `<RafBar>` in `App.jsx` — it takes the same props (`done` is 
 ## 8. Accessibility
 
 - `role="progressbar"` with `aria-valuemin/max/now` and `aria-label`.
-- With a CSS transition the real percentage is unknown, so expose state via `aria-valuetext` (`Queued / Loading / Complete`). The rAF variant can report the true `aria-valuenow`.
+- With a CSS transition the real percentage is unknown, so expose state via `aria-valuetext` (`Queued / Loading / Complete`) — children of `role="progressbar"` are presentational, so the visible status text isn't what screen readers read. The rAF variant can report the true `aria-valuenow`.
 - Do not announce every percentage change to screen readers (too chatty); announce completion via a polite live region if needed.
 - Don't convey state by colour alone — the text label ("Queued", "Loading", "Complete") does that.
 - Provide visible focus styles for the buttons and a `<label>` for the select.
@@ -453,33 +451,3 @@ Add an interval in an effect that dispatches `ADD`, with cleanup via `clearInter
 - Mutating state: `bars[i].done = true`.
 - Not clearing rAF in effect cleanup.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Start with a single bar, then sequential, then concurrency. Say *"I'll derive the running set from state rather than schedule with effects"* — interviewers like that. Be ready to explain CSS vs rAF trade-offs.
-
-| Minute | Activity |
-| --- | --- |
-| 0–4 | Clarify (fixed duration? sequential vs concurrent?) |
-| 4–8 | State shape `{id, done}`, derived `activeIds`, tree |
-| 8–18 | `Bar` with CSS transition + `transitionend` |
-| 18–25 | App: add button, reducer, sequential (N = 1) |
-| 25–32 | Generalise to max concurrency select |
-| 32–38 | Styling, reset, aria attributes |
-| 38–45 | Edge cases, explain rAF alternative, follow-ups |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Single bar that fills with a CSS transition and fires `onComplete`
-- [ ] Explain why the "paint before class flip" trick is required
-- [ ] Sequential queue (N = 1) with Add button
-- [ ] Configurable max concurrency, derived (no effects)
-- [ ] rAF-based bar showing a percentage
-- [ ] Pause/resume for the rAF bar
-- [ ] Per-bar duration and cancel
-- [ ] Reset with no leaked rAFs/timers
-- [ ] Promise-pool version (`runWithConcurrency(tasks, n)`) in plain JS
-- [ ] Add `role="progressbar"` and test with a screen reader

@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -595,33 +593,3 @@ Flatten the visible tree via DFS into `[{comment, depth}]` (skipping collapsed s
 - Forgetting to reset/close the reply form after submit.
 - Rendering user text with `dangerouslySetInnerHTML`.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Draw the tree and say "I copy only the path to the node" before coding. Write `updateNode` first — then every feature is a one-liner using it.
-
-| Minutes | Task |
-|---|---|
-| 0–5 | Clarify (nested vs flat, delete semantics), define node shape |
-| 5–15 | Recursive `CommentNode` rendering seed data, indentation CSS |
-| 15–25 | `updateNode` + reducer; add top-level comment and reply (inline form) |
-| 25–35 | Edit + delete (leaf vs soft delete) |
-| 35–42 | Collapse/expand with hidden-reply count |
-| 42–50 | Context to avoid prop drilling, `React.memo`, structural sharing |
-| 50–60 | Edge cases, a11y, discuss normalisation / virtualisation |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Recursive component renders arbitrary depth
-- [ ] `updateNode` returns new objects only along the path
-- [ ] Add top-level comment and nested reply
-- [ ] Edit own comment, shows `(edited)`
-- [ ] Delete leaf vs delete with replies (soft delete + prune)
-- [ ] Collapse shows hidden reply count
-- [ ] Empty comments rejected; form closes after submit
-- [ ] `key={id}`, context instead of prop drilling, `React.memo`
-- [ ] Explain normalised alternative and flat → tree conversion
-- [ ] Re-do from scratch in 45 minutes

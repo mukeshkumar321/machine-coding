@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -360,33 +358,4 @@ Reordering/filtering the items shifts indexes and would open the wrong panel; id
 - Animating `max-height: 1000px` hack → wrong timing for short/long content.
 - Using index as key.
 
----
 
-## 12. Interview Tips & Time Plan
-
-Lead with the state decision ("array of open ids handles both modes") and mention a11y before they ask.
-
-| Minutes | Activity |
-| --- | --- |
-| 0–4 | Clarify, define props and state shape |
-| 4–12 | Render items, toggle for single + multi mode |
-| 12–18 | CSS: layout, icon, open/close |
-| 18–26 | ARIA attributes + `useId` |
-| 26–32 | Keyboard navigation with refs |
-| 32–36 | Animation (grid trick) + reduced motion |
-| 36–40 | Edge cases, follow-ups (controlled, disabled items, lazy content) |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Single-open mode with collapsible active item.
-- [ ] Multi-open mode.
-- [ ] `defaultOpenIds` handled for both modes.
-- [ ] `aria-expanded`, `aria-controls`, `aria-labelledby`, heading wrapper.
-- [ ] ↑ ↓ Home End navigation with wraparound.
-- [ ] Closed content not focusable.
-- [ ] CSS animation without JS measuring.
-- [ ] Controlled variant (`openIds` + `onOpenChange`).
-- [ ] Support disabled items.
-- [ ] Re-implement with native `<details name>` and compare.

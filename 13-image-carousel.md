@@ -1,6 +1,6 @@
 # Image Carousel (Autoplay, Infinite Loop, Swipe) — Machine Coding
 
-> **Difficulty:** Medium · **Time:** 45 min · **Asked at / Frequency:** Commonly reported at product companies and e-commerce (Flipkart, Myntra, Swiggy, Amazon) — Very High · **Tier:** 1
+> **Difficulty:** Medium | **Time:** 45 min | **Frequency:** ⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -395,7 +393,7 @@ export default function App() {
 
 - `slides.length === 0` → render nothing; `1` → no clones, no arrows/dots/autoplay; `2` → clones still work.
 - Rapid clicking / holding the arrow key during the transition (locked while on a clone).
-- Click on a dot for the slide that's already active (no-op position change, but timer restarts).
+- Click on a dot for the slide that's already active → nothing changes (`pos` is the same, so the autoplay countdown is *not* restarted; add a counter to the timer's deps if you want that).
 - Tab hidden: browsers throttle timers; we pause so slides don't pile up.
 - Hover on touch devices (sticky hover after tap) — also pause on focus/drag; consider `(hover: hover)` media check.
 - Dragging past the first/last slide (works because of the clones); starting a drag on a link inside a slide fires `click` afterwards — suppress it if movement > few px.
@@ -453,7 +451,7 @@ Slide width = `100% / perView`; translate by `-(pos * 100 / perView)%`; clones b
 <details>
 <summary><strong>4. How do you add a progress bar for the autoplay?</strong></summary>
 
-Render a bar keyed by `pos` with a CSS animation `width: 0 → 100%` of duration `interval`, and `animation-play-state: paused` when `paused`. Because it's keyed by `pos`, it restarts on every navigation, in sync with the timer. No JS per frame.
+Render the bar only while autoplay is running (`!paused`), keyed by `pos`, with a CSS animation `width: 0 → 100%` of duration `interval`. Keying by `pos` restarts it on every navigation, and unmounting it on pause makes it restart from 0 on resume — exactly like the timer, which also starts a full countdown again. (Using `animation-play-state: paused` instead would resume mid-way and drift out of sync.) No JS per frame.
 
 </details>
 
@@ -500,33 +498,3 @@ Uncontrolled (internal state + `onChange(index)` callback) is easiest. For a con
 - Forgetting the 1-slide / 0-slide cases.
 - Pausing on focus for mouse clicks (use `:focus-visible`), so autoplay never resumes.
 
----
-
-## 12. Interview Tips & Time Plan
-
-First ship a working non-looping slider (index + translate). Then say "clones for seamless looping" and add it. Mention the `% n` approach as the fallback if short on time.
-
-| Minutes | Task |
-|---|---|
-| 0–5 | Clarify, define state (`pos`, `animate`), sketch the clone track |
-| 5–15 | Track + slides + prev/next with translate and transition |
-| 15–22 | Dots, active index derivation |
-| 22–30 | Infinite loop: clones, snap without animation, lock on clones |
-| 30–36 | Autoplay with timeout + cleanup; pause on hover/focus/hidden tab |
-| 36–42 | Swipe/drag with Pointer Events |
-| 42–45 | Keyboard, ARIA, reduced motion, edge cases |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Track + `translateX(-index*100%)` with CSS transition
-- [ ] Dots reflect and control the active slide
-- [ ] Infinite loop in both directions with clones and invisible snap
-- [ ] Autoplay uses a cleaned-up timer; manual nav restarts it
-- [ ] Pause on hover, focus-visible, hidden tab, and a Pause button
-- [ ] Swipe via pointer events with threshold and snap-back
-- [ ] Arrow keys work; buttons labelled; ARIA carousel roles
-- [ ] 0 / 1 / 2 slides handled
-- [ ] Can explain why `transform` and why clones
-- [ ] Re-do in 30 minutes
