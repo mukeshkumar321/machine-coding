@@ -1,6 +1,6 @@
 # Autocomplete / Typeahead — Machine Coding
 
-> **Difficulty:** Medium–Hard | **Time:** 45–60 min | **Asked at / Frequency:** Very common at product companies (Google, Amazon, Flipkart, Uber-style UI rounds) — ⭐⭐⭐⭐⭐ | **Tier:** 1 (must know)
+> **Difficulty:** Medium–Hard | **Time:** 45–60 min | **Frequency:** ⭐⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -363,7 +363,11 @@ export default function Autocomplete({
           )}
           {loading && <div className="autocomplete-status">Searching…</div>}
           {showEmpty && <div className="autocomplete-status">No results for “{query.trim()}”</div>}
-          {showError && <div className="autocomplete-status error">Something went wrong. Try again.</div>}
+          {showError && (
+            <div role="alert" className="autocomplete-status error">
+              Something went wrong. Try again.
+            </div>
+          )}
         </div>
       )}
 
@@ -429,7 +433,7 @@ export default function App() {
 - **Race-condition fix:** every effect run creates its own `AbortController`; the cleanup (`abort()`) runs before the next effect run or on unmount. Slow response for `"ind"` can't land after `"india"`: it's rejected with `AbortError` and swallowed. The extra `controller.signal.aborted` check protects against `searchFn` implementations that ignore the signal.
 - **Cache:** `useRef(new Map())` persists across renders without causing renders. Key is the lower-cased query. Errors are **not** cached.
 - **No stale closures:** results are set from the promise with local variables; `searchFn` and `minChars` are listed in the deps (so `searchFn` must be stable).
-- **Keep old results while loading:** `setState(prev => ({ ...prev, status: 'loading' }))` avoids dropdown flicker.
+- **Keep old results while loading:** the `loading` update copies `prev.results` (`{ status: 'loading', results: prev.results, ... }`), which avoids dropdown flicker.
 - **`isPending`:** covers the debounce gap between typing and the request start so "Searching…" shows immediately.
 - **`enabled: open`:** after selecting an item the dropdown closes and the effect doesn't run another search for the filled-in label.
 - **Keyboard / ARIA combobox:** DOM focus stays on the input; `aria-activedescendant` points to the highlighted option, which a screen reader announces. `scrollIntoView({ block: 'nearest' })` keeps it visible.
@@ -467,7 +471,7 @@ export default function App() {
 - Keyboard: ↑/↓, Enter, Esc; `Tab` leaves the field (and the blur closes the panel).
 - Don't move DOM focus into the list; keep it in the input.
 - Contrast for highlight/active states; don't rely on bold alone for the active option.
-- Error text is announced (`role="alert"` if you want it assertive).
+- Error text is announced via `role="alert"`; loading is shown visually only (add it to the live region if you want it spoken).
 
 ---
 
