@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -718,38 +716,3 @@ Track `isDirty = values !== initialValues` (deep-compare or a flag set on change
 - Storing the password in persisted drafts.
 - Swapping one button element between `type="button"` Next and `type="submit"` Submit without `key`s → the same click can submit the form on the final step transition.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Say the architecture out loud first: *"values in the parent, steps are views, validation is a pure function per step, one `goTo` for all navigation."* Get Next/Back + validation working before styling the stepper. Mention focus management and re-validating everything on submit — it signals real-world experience.
-
-| Minute | Activity |
-| --- | --- |
-| 0–5 | Clarify (linear? when to validate? persistence?) |
-| 5–10 | State shape, step config, navigation table |
-| 10–20 | `steps.js` config + `validateStep`; `Field` component |
-| 20–30 | `MultiStepForm`: values, errors, Next/Back, preserved state |
-| 30–38 | `StepIndicator` (states, `aria-current`, click-to-jump with validation) |
-| 38–45 | Review step, submit flow, loading/success/error |
-| 45–52 | Focus management, a11y pass, CSS polish |
-| 52–60 | Edge cases and follow-ups (draft persistence, conditional steps) |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Config-driven steps with pure `validateStep`
-- [ ] Parent-owned `values`; confirm Back/Next preserves data
-- [ ] Next validates current step only; Back never validates
-- [ ] Errors: show, clear on edit, linked via `aria-describedby`
-- [ ] Focus heading on step change and first invalid field on failure
-- [ ] `StepIndicator` with `aria-current="step"` and progress bar
-- [ ] Forward jump via indicator validates intermediate steps
-- [ ] Review step with Edit shortcuts and masked password
-- [ ] Submit re-validates all steps, guards double-submit, handles error/success
-- [ ] Enter key advances (real `<form noValidate>`)
-- [ ] Persist draft to `sessionStorage` (without the password)
-- [ ] Conditional step (Team plan → extra step) tracked by step id
-- [ ] URL-synced steps with `popstate`
-- [ ] Async email-availability validation with cancellation
