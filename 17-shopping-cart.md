@@ -1,6 +1,6 @@
 # Shopping Cart — Machine Coding
 
-> **Difficulty:** Medium | **Time:** 60 min | **Asked at / Frequency:** Very common (Amazon, Flipkart, Myntra, Meesho, Walmart, Shopify) | **Tier:** 1 (must-know)
+> **Difficulty:** Medium | **Time:** 60 min | **Frequency:** ⭐⭐⭐⭐⭐
 
 ## Table of Contents
 
@@ -617,7 +617,7 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
 - Coupon input has a `<label>`, `aria-invalid`, and `aria-describedby` → error with `role="alert"`.
 - Use real `<button>`s and `<form>` (Enter submits coupon) — never clickable `<div>`s.
 - Disabled "+" at max quantity; communicate the limit in text if possible.
-- When removing an item, move focus sensibly (next item / the cart heading) so keyboard users aren't dropped at `<body>`.
+- When removing an item or applying a coupon (the form unmounts), move focus sensibly (next item / the cart heading / the applied-coupon text) so keyboard users aren't dropped at `<body>` — the reference code omits this for brevity.
 - Use semantic lists, headings, and `<dl>` for summary rows.
 
 ---
