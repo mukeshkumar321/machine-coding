@@ -15,8 +15,6 @@
 9. [Performance Considerations](#9-performance-considerations)
 10. [Follow-up Questions](#10-follow-up-questions)
 11. [Common Mistakes](#11-common-mistakes)
-12. [Interview Tips & Time Plan](#12-interview-tips--time-plan)
-13. [Practice Checklist](#13-practice-checklist)
 
 ---
 
@@ -527,34 +525,3 @@ Render hidden inputs (`<input type="hidden" name="langs" value={v}>` per selecte
 - No `role`/`aria-*` → invisible to screen readers.
 - Computing `filtered` and `selected` with `includes` on every render for large lists.
 
----
-
-## 12. Interview Tips & Time Plan
-
-Say "controlled component + derived data + ARIA combobox" up front. Build in layers; each layer should work before the next.
-
-| Minutes | Task |
-|---|---|
-| 0–5 | Clarify (controlled, select-all semantics), state + keyboard map |
-| 5–15 | Control + panel toggle, options toggling `value`, chips |
-| 15–22 | Search filter, empty state |
-| 22–30 | Select all (checked / partial), clear all |
-| 30–38 | `useClickOutside` with cleanup; `mousedown` preventDefault |
-| 38–50 | Keyboard: active index, Enter, Esc, Backspace, Tab, scroll into view |
-| 50–57 | ARIA combobox/listbox roles, focus styles |
-| 57–60 | Edge cases; discuss async/virtualisation/portal |
-
----
-
-## 13. Practice Checklist
-
-- [ ] Controlled `value` / `onChange`, never mutated
-- [ ] Search filters case-insensitively; empty state
-- [ ] Chips removable by × and Backspace
-- [ ] Select all works on filtered items with checked/partial state
-- [ ] Outside click hook with cleanup and latest-handler ref
-- [ ] ↑ ↓ Enter Esc Tab behave; active option scrolls into view
-- [ ] Panel stays open after selection; input keeps focus
-- [ ] `role=combobox/listbox/option`, `aria-activedescendant`, `aria-selected`
-- [ ] Explain virtualisation, async search, portal positioning
-- [ ] Re-do in 40 minutes from a blank file
