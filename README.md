@@ -79,6 +79,19 @@ Questions are ordered from easiest to hardest (difficulty first, estimated time 
 
 > Interview frequency does not follow difficulty. Revise 02, 09, 10, 11, 14, 16, 18, 20, 21 and 24 first.
 
+### Extra practice: gaps worth covering (25–32)
+
+| No. | Question | Difficulty | Link |
+| --- | --- | --- | --- |
+| 25 | Utility Hooks (`useDebounce`, `useFetch`, `useOnClickOutside`, ...) | Easy–Medium | [Open](./25-utility-hooks.md) |
+| 26 | JS Polyfills and Utilities (`debounce`, `Promise.all`, `bind`, ...) | Medium | [Open](./26-js-polyfills-utilities.md) |
+| 27 | Nested Checkboxes | Medium | [Open](./27-nested-checkboxes.md) |
+| 28 | Tooltip / Popover | Medium–Hard | [Open](./28-tooltip-popover.md) |
+| 29 | Undo / Redo (`useHistory`) | Medium–Hard | [Open](./29-undo-redo.md) |
+| 30 | Drag-and-Drop Sortable List | Hard | [Open](./30-drag-drop-sortable-list.md) |
+| 31 | Chat UI | Hard | [Open](./31-chat-ui.md) |
+| 32 | Virtualized List | Hard | [Open](./32-virtualized-list.md) |
+
 ## 🗓️ Suggested 4-Week Plan
 
 | Week | Focus |
@@ -87,6 +100,7 @@ Questions are ordered from easiest to hardest (difficulty first, estimated time 
 | 2 | 07–13 |
 | 3 | 14–19 |
 | 4 | 20–24, then redo the weakest ones as timed mock interviews |
+| 5 (optional) | 25–32: utilities and senior-level topics |
 
 ## 🧠 How To Use This Repository
 
@@ -123,4 +137,4 @@ Todo list, autocomplete, modal, infinite scroll, nested comments, file explorer,
 
 ---
 
-**Last Updated**: 2026 | **Status**: Questions 01–24, ordered Easy to Hard. Senior-level topics and utilities coming later.
+**Last Updated**: 2026 | **Status**: Questions 01–24 ordered Easy to Hard, plus 8 extra topics (25–32).
