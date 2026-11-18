@@ -1092,7 +1092,9 @@ await Promise.race([fetchJson('/slow'), sleep(3000).then(() => { throw new Error
 
 ## 14. Tricky Output Questions
 
-> Each question uses the implementations above (`debounce`, `throttle`, `promiseAll`, `myBind`, …). Every output below was produced by actually running the code in Node.
+> Q1–Q13 use the implementations above (`debounce`, `throttle`, `promiseAll`, `myBind`, …). Q14 onwards are **self-contained** — copy a snippet into a file and run it with Node 18+ (as an ES module, so top-level code is in strict mode). Every output below was produced by actually running the code in Node.
+>
+> Topics: event loop (Q14–Q22) · promises & async/await (Q23–Q33) · `this`, `call`/`apply`/`bind` (Q34–Q42) · closures, memoize, curry, once, compose, array methods (Q43–Q54) · cloning, equality, coercion (Q55–Q60, Q71–Q77) · event emitter, debounce, throttle, timeout, retry (Q61–Q68) · prototypes and polyfill hygiene (Q69–Q70)
 
 ### Q1. Debounce timing
 
@@ -1454,5 +1456,1823 @@ gave up: fail 2
 ```
 
 With `retries: 3` the function can run up to 4 times; it succeeds on attempt 3, so the result is `ok after 3`. With `retries: 1` there is the first try plus one retry (2 calls total), both fail, and the **last** error (`fail 2`) is rethrown — no sleep happens after the final failure.
+
+</details>
+
+### Q14. Event loop: sync, microtasks, macrotasks
+
+```js
+console.log('1');
+setTimeout(() => console.log('2'), 0);
+Promise.resolve().then(() => console.log('3'));
+queueMicrotask(() => console.log('4'));
+(async () => {
+  console.log('5');
+  await null;
+  console.log('6');
+})();
+console.log('7');
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+1
+5
+7
+3
+4
+6
+2
+```
+
+Synchronous code runs first, including the body of the `async` function up to its first `await` (so `5` prints before `7`). Then the microtask queue drains in the order jobs were queued: the `.then` (`3`), `queueMicrotask` (`4`), and the continuation after `await` (`6`). The `setTimeout` macrotask (`2`) runs last, even with a 0 ms delay.
+
+</details>
+
+### Q15. Microtasks queued by microtasks still run before a timer
+
+```js
+setTimeout(() => console.log('timeout'), 0);
+
+let i = 0;
+function loop() {
+  if (i++ < 3) {
+    Promise.resolve().then(() => {
+      console.log('micro', i);
+      loop();
+    });
+  }
+}
+loop();
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+micro 1
+micro 2
+micro 3
+timeout
+```
+
+The microtask queue is drained **completely** — including microtasks added while draining — before the event loop moves to the next macrotask. That is why an endless microtask chain can starve rendering and timers.
+
+</details>
+
+### Q16. `return promise` inside `async` costs extra ticks
+
+```js
+async function a() {
+  return 1;
+}
+async function b() {
+  return Promise.resolve(2);
+}
+
+a().then(() => console.log('a'));
+b().then(() => console.log('b'));
+Promise.resolve()
+  .then(() => console.log('p1'))
+  .then(() => console.log('p2'))
+  .then(() => console.log('p3'));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+a
+p1
+p2
+b
+p3
+```
+
+`a()` fulfils immediately, so its callback runs in the first tick. `b()` resolves with a *promise*, which has to be adopted first (a thenable job, then a `.then` on it) — roughly two extra ticks — so `b` lands between `p2` and `p3`. `return await x` or returning a plain value avoids the delay.
+
+</details>
+
+### Q17. Timer ordering with different delays
+
+```js
+setTimeout(() => console.log('A'), 10);
+setTimeout(() => console.log('B'), 0);
+setTimeout(() => console.log('C'), 5);
+setTimeout(() => console.log('D'), 0);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+B
+D
+C
+A
+```
+
+Timers fire by due time; ties keep registration order, so the two 0 ms timers run first (`B` then `D`). The registration order of `A` and `C` is irrelevant — `C` (5 ms) is due before `A` (10 ms).
+
+</details>
+
+### Q18. Clearing an interval from inside its own callback
+
+```js
+let n = 0;
+const id = setInterval(() => {
+  n++;
+  console.log('tick', n);
+  if (n === 3) clearInterval(id);
+}, 10);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+tick 1
+tick 2
+tick 3
+```
+
+`id` is assigned before the first tick fires, so the callback can safely close over it and stop itself. The same pattern is how you build a `setTimeout`-chain or a polling loop that stops on a condition.
+
+</details>
+
+### Q19. `var` vs `let` in a loop with timers
+
+```js
+for (var i = 0; i < 3; i++) setTimeout(() => console.log('var', i), 0);
+for (let j = 0; j < 3; j++) setTimeout(() => console.log('let', j), 0);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+var 3
+var 3
+var 3
+let 0
+let 1
+let 2
+```
+
+`var i` is one binding shared by every callback; the loop has finished (`i === 3`) before any timer fires. `let j` creates a **fresh binding per iteration**, so each closure captures its own value. The pre-ES6 fix was an IIFE or `setTimeout(fn, 0, i)`.
+
+</details>
+
+### Q20. `this` inside a `setTimeout` callback
+
+```js
+const o = {
+  n: 1,
+  f() {
+    setTimeout(function () {
+      console.log(this === o, this.n);
+    }, 0);
+  },
+  g() {
+    setTimeout(() => console.log(this === o, this.n), 0);
+  },
+};
+o.f();
+o.g();
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+false undefined
+true 1
+```
+
+A regular function passed to `setTimeout` is invoked by the timer machinery, not as `o.f()`, so `this` is the `Timeout` object in Node (`window` in browsers) — never `o`. The arrow function has no `this` of its own and uses the one from `g`, which is `o`. Use an arrow function or `.bind(this)`.
+
+</details>
+
+### Q21. A Promise executor runs synchronously
+
+```js
+console.log('start');
+const p = new Promise((resolve) => {
+  console.log('executor');
+  resolve('done');
+  console.log('after resolve');
+});
+p.then((v) => console.log(v));
+console.log('end');
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+start
+executor
+after resolve
+end
+done
+```
+
+The executor is run immediately and synchronously, and code after `resolve()` still executes (`resolve` is not `return`). Only the `.then` callback is deferred to a microtask.
+
+</details>
+
+### Q22. Only the first settle call wins
+
+```js
+new Promise((resolve, reject) => {
+  resolve('first');
+  reject('second');
+  resolve('third');
+  throw new Error('boom');
+}).then(
+  (v) => console.log('ok', v),
+  (e) => console.log('err', e)
+);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+ok first
+```
+
+A promise settles exactly once. Later `resolve`/`reject` calls and even a thrown error after settlement are ignored (the throw is swallowed, not reported).
+
+</details>
+
+### Q23. then / catch / finally chain
+
+```js
+Promise.resolve(1)
+  .then((v) => {
+    console.log(v);
+    return v + 1;
+  })
+  .then((v) => {
+    console.log(v);
+    throw new Error('x');
+  })
+  .then(() => console.log('skipped'))
+  .catch((e) => {
+    console.log('caught', e.message);
+    return 'recovered';
+  })
+  .then((v) => console.log(v))
+  .finally(() => console.log('finally'));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+1
+2
+caught x
+recovered
+finally
+```
+
+A thrown error turns the chain into a rejected state and skips every `.then(onFulfilled)` until a handler is found. `catch` returning a value *recovers* the chain, so the next `.then` receives `'recovered'`. `finally` runs either way.
+
+</details>
+
+### Q24. Non-function arguments to `then`
+
+```js
+Promise.resolve(1).then(2).then(console.log);
+Promise.resolve(1).then(null, null).then(console.log);
+Promise.reject('e').then(console.log).catch((e) => console.log('c', e));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+1
+1
+c e
+```
+
+If `then` receives something that is not a function, it is ignored and the value (or rejection) passes straight through to the next link. The rejected promise skips `.then(console.log)` and reaches `catch`.
+
+</details>
+
+### Q25. `finally` and the final value
+
+```js
+Promise.resolve('A').finally(() => 'B').then((v) => console.log('1', v));
+Promise.reject('E').finally(() => 'B').catch((e) => console.log('2', e));
+Promise.resolve('A').finally(() => { throw 'F'; }).catch((e) => console.log('3', e));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+3 F
+1 A
+2 E
+```
+
+`finally` does not change the outcome: its return value is ignored (`A` and `E` pass through) — **unless it throws or returns a rejected promise**, which replaces the result (`F`). The pass-through versions take extra microtask ticks (`finally` waits on the callback's result), so the throwing version logs first.
+
+</details>
+
+### Q26. `Promise.all` — result order vs completion order, fail-fast
+
+```js
+const d = (v, ms, fail) =>
+  new Promise((res, rej) => setTimeout(() => (fail ? rej(v) : res(v)), ms));
+
+Promise.all([d('a', 30), d('b', 10), d('c', 20)]).then((r) => console.log('all', r));
+Promise.all([d('a', 30), d('b', 10, true), d('c', 20, true)]).catch((e) => console.log('rejected', e));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+rejected b
+all [ 'a', 'b', 'c' ]
+```
+
+Results keep **input order** (`['a','b','c']`), not completion order, and the promise resolves only when the slowest (30 ms) finishes. With a rejection, `Promise.all` settles on the **first** rejection (`b` at 10 ms); later rejections (`c`) are handled internally, so there is no unhandled-rejection error — but the other work is *not* cancelled.
+
+</details>
+
+### Q27. race vs any vs allSettled
+
+```js
+const d = (v, ms, fail) =>
+  new Promise((res, rej) => setTimeout(() => (fail ? rej(v) : res(v)), ms));
+
+Promise.race([d('slow', 30), d('err', 10, true)]).catch((e) => console.log('race rejected', e));
+Promise.any([d('err1', 10, true), d('ok', 30), d('err2', 20, true)]).then((v) => console.log('any', v));
+Promise.any([d('e1', 5, true), d('e2', 8, true)]).catch((e) => console.log(e.constructor.name, e.errors));
+Promise.allSettled([d('x', 5), d('y', 6, true)]).then((r) => console.log(JSON.stringify(r)));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+[{"status":"fulfilled","value":"x"},{"status":"rejected","reason":"y"}]
+AggregateError [ 'e1', 'e2' ]
+race rejected err
+any ok
+```
+
+`allSettled` never rejects and waits for everything (6 ms). The second `any` has no fulfilled input, so it rejects with an `AggregateError` whose `errors` array lists the reasons (8 ms). `race` adopts the first *settlement*, even a rejection (10 ms). The first `any` ignores rejections and takes the first *fulfilment* (30 ms).
+
+</details>
+
+### Q28. Edge cases: empty arrays and non-promises
+
+```js
+Promise.all([]).then((v) => console.log('all', v));
+Promise.allSettled([]).then((v) => console.log('settled', v));
+Promise.any([]).catch((e) => console.log(e.name, e.errors));
+Promise.race([]).then(
+  () => console.log('never'),
+  () => console.log('never')
+);
+Promise.all([1, Promise.resolve(2), { then(r) { r(3); } }]).then((v) => console.log(v));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+all []
+settled []
+AggregateError []
+[ 1, 2, 3 ]
+```
+
+`all([])` and `allSettled([])` resolve immediately with `[]`; `any([])` rejects with an empty `AggregateError`; `race([])` **never settles** (nothing printed for it). Plain values and thenables are accepted — each element goes through `Promise.resolve`. A polyfill must handle all of these.
+
+</details>
+
+### Q29. Sequential `await` vs `Promise.all`
+
+```js
+const d = (v, ms) =>
+  new Promise((r) => setTimeout(() => { console.log('done', v); r(v); }, ms));
+
+(async () => {
+  for (const [v, ms] of [['a', 30], ['b', 10]]) await d(v, ms);
+  console.log('sequential finished');
+  await Promise.all([['c', 30], ['d', 10]].map(([v, ms]) => d(v, ms)));
+  console.log('parallel finished');
+})();
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+done a
+done b
+sequential finished
+done d
+done c
+parallel finished
+```
+
+`await` in a loop starts each task only after the previous one finished (≈ 40 ms total, source order). `Promise.all` over `map` starts them all at once (≈ 30 ms total) and they complete in time order (`d` before `c`).
+
+</details>
+
+### Q30. `forEach` does not await
+
+```js
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+(async () => {
+  [1, 2, 3].forEach(async (n) => {
+    await sleep(10);
+    console.log('each', n);
+  });
+  console.log('after forEach');
+  for (const n of [4, 5]) {
+    await sleep(10);
+    console.log('for', n);
+  }
+  console.log('end');
+})();
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+after forEach
+each 1
+each 2
+each 3
+for 4
+for 5
+end
+```
+
+`forEach` ignores the promises returned by its async callback, so execution continues immediately (`after forEach`) and the three sleeps run concurrently. `for…of` with `await` really pauses. Use `for…of` for sequential work and `Promise.all(arr.map(...))` for parallel work.
+
+</details>
+
+### Q31. `return` vs `return await` inside `try`
+
+```js
+async function f1() {
+  try {
+    return Promise.reject('r1');
+  } catch (e) {
+    return 'caught1';
+  }
+}
+async function f2() {
+  try {
+    return await Promise.reject('r2');
+  } catch (e) {
+    return 'caught2';
+  }
+}
+f1().then(console.log, (e) => console.log('rejected', e));
+f2().then(console.log, (e) => console.log('rejected', e));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+caught2
+rejected r1
+```
+
+`return promise` hands the promise to the caller *without* awaiting it inside the `try`, so the `catch` never sees the rejection. `return await promise` awaits inside the `try`, so the error is catchable. This is a classic reason to write `return await` in `try` blocks.
+
+</details>
+
+### Q32. Promise identity
+
+```js
+const p = Promise.resolve(1);
+console.log(Promise.resolve(p) === p, new Promise((r) => r(p)) === p, p.then() === p);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+true false false
+```
+
+`Promise.resolve(p)` returns the *same* promise when given a native promise from the same realm. `new Promise` and `.then` always create a **new** promise.
+
+</details>
+
+### Q33. `await` on a thenable
+
+```js
+const thenable = {
+  then(resolve) {
+    console.log('then called');
+    resolve('value');
+  },
+};
+
+(async () => {
+  console.log('before');
+  const v = await thenable;
+  console.log('after', v);
+})();
+console.log('sync end');
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+before
+sync end
+then called
+after value
+```
+
+`await` wraps the value with `Promise.resolve`, which schedules a microtask to call the thenable's `then` — so `then called` comes *after* the synchronous code, and the function resumes only after `resolve` is called. This is how `Promise.all` and `await` treat any object with a `then` method.
+
+</details>
+
+### Q34. `bind` is permanent — except for `new`
+
+```js
+function who() {
+  return this.name;
+}
+const a = { name: 'A' };
+const b = { name: 'B' };
+const bound = who.bind(a);
+
+console.log(bound(), bound.call(b), bound.bind(b)(), new (who.bind(a))() instanceof who);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+A A A true
+```
+
+A bound function ignores later `call`/`apply`/`bind` — `this` stays `a`. The one thing that overrides it is `new`: the bound function acts as a constructor for the *original* function with a fresh `this`, so the result is an instance of `who`. A correct `bind` polyfill must handle this.
+
+</details>
+
+### Q35. Arrow functions ignore `call` / `apply` / `bind`
+
+```js
+const o = {
+  name: 'o',
+  getArrow() {
+    return () => this.name;
+  },
+};
+const arrow = o.getArrow();
+
+console.log(arrow(), arrow.call({ name: 'x' }), o.getArrow.call({ name: 'y' })());
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+o o y
+```
+
+An arrow function captures `this` **lexically** when it is created. `arrow.call({ name: 'x' })` cannot change it (still `'o'`). But calling the *outer* method with a different `this` creates a new arrow bound to `{ name: 'y' }`.
+
+</details>
+
+### Q36. Losing `this` when extracting a method
+
+```js
+'use strict';
+const user = {
+  name: 'Ada',
+  hi() {
+    return `hi ${this?.name}`;
+  },
+};
+const { hi } = user;
+
+console.log(user.hi(), hi(), (0, user.hi)(), (user.hi)());
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+hi Ada hi undefined hi undefined hi Ada
+```
+
+`this` is decided by **how** the function is called. `hi()` and `(0, user.hi)()` call the bare function (the comma operator returns the value, dropping the reference), so `this` is `undefined` in strict mode. `(user.hi)()` keeps the property-reference semantics, so `this` is `user`. Without strict mode, `this` would be the global object.
+
+</details>
+
+### Q37. `this` boxing for primitives, `null` and `undefined`
+
+```js
+function strictFn() {
+  'use strict';
+  return typeof this;
+}
+console.log(strictFn.call(5), strictFn.call(null), strictFn.call(undefined), strictFn.apply('s'));
+
+const sloppy = new Function('return typeof this');
+console.log(sloppy.call(5), sloppy.call(null), sloppy.call(undefined));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+number object undefined string
+object object object
+```
+
+In strict mode `this` is passed through untouched (`typeof null` is `'object'`, `undefined` stays `undefined`). In sloppy mode primitives are **boxed** (`5` → `Number` object) and `null`/`undefined` are replaced by the global object — which is why sloppy `call(null)` gives `'object'`. A `call` polyfill must wrap primitives with `Object(ctx)` to match sloppy semantics.
+
+</details>
+
+### Q38. A naive `bind` polyfill breaks `new`
+
+```js
+Function.prototype.naiveBind = function (ctx, ...a) {
+  const fn = this;
+  return function (...b) {
+    return fn.apply(ctx, [...a, ...b]);
+  };
+};
+
+function P(x, y) {
+  this.x = x;
+  this.y = y;
+}
+const NP = P.bind({ ignored: true }, 1);
+const NB = P.naiveBind({ ignored: true }, 1);
+const p1 = new NP(2);
+const p2 = new NB(2);
+
+console.log(p1.x, p1.y, p1 instanceof P);
+console.log(p2.x, p2 instanceof P);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+1 2 true
+undefined false
+```
+
+Native `bind` partially applies arguments, ignores the bound `this` under `new`, and keeps the prototype chain. The naive version writes `x`/`y` onto the bound context object instead, and the instance it returns is a plain object created from the anonymous wrapper — wrong properties and `instanceof` fails. A correct polyfill checks `this instanceof boundFn` and sets `boundFn.prototype`.
+
+</details>
+
+### Q39. `this` in nested callbacks
+
+```js
+'use strict';
+const counter = {
+  count: 0,
+  inc() {
+    [1, 2, 3].forEach(function () {
+      this.count++;
+    });
+  },
+  inc2() {
+    [1, 2, 3].forEach(function () {
+      this.count++;
+    }, this);
+  },
+  inc3() {
+    [1, 2, 3].forEach(() => this.count++);
+  },
+};
+
+try {
+  counter.inc();
+} catch (e) {
+  console.log(e.constructor.name);
+}
+counter.inc2();
+console.log(counter.count);
+counter.inc3();
+console.log(counter.count);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+TypeError
+3
+6
+```
+
+A regular callback gets `this === undefined` in strict mode, so `this.count++` throws. Array methods accept a `thisArg` second parameter (`inc2`), and arrow functions capture the enclosing `this` (`inc3`). A `map`/`forEach` polyfill must honour `thisArg`.
+
+</details>
+
+### Q40. `apply` with array-likes, `Math.max` and empty inputs
+
+```js
+console.log(
+  Math.max.apply(null, [1, 5, 3]),
+  Math.max.call(null, 1, 5, 3),
+  Math.max(...[]),
+  Math.min(),
+  Math.max.apply(null, { length: 2, 0: 4, 1: 9 })
+);
+console.log(Array.prototype.slice.call('abc'), Array.prototype.map.call('abc', (c) => c.toUpperCase()));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+5 5 -Infinity Infinity 9
+[ 'a', 'b', 'c' ] [ 'A', 'B', 'C' ]
+```
+
+`apply` accepts any array-like (an object with `length` and indices). `Math.max()` with no arguments is `-Infinity` and `Math.min()` is `Infinity` (identity values). Generic array methods work on strings and array-likes via `call` — the trick behind `Array.prototype.slice.call(arguments)`.
+
+</details>
+
+### Q41. `length` and `name` of functions and bound functions
+
+```js
+function f(a, b = 2, ...rest) {}
+console.log(f.length, f.bind(null, 1).length, f.bind(null).name, (() => {}).name === '');
+
+const g = function () {};
+const h = () => {};
+console.log(g.name, h.name);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+1 0 bound f true
+g h
+```
+
+`length` counts parameters **before** the first default or rest parameter (so `1`), which is exactly why `curry(fn)` based on `fn.length` fails with defaults. A bound function's `length` is reduced by the pre-bound arguments, and its name is prefixed with `bound `. Anonymous functions assigned to a variable infer the variable's name.
+
+</details>
+
+### Q42. A constructor that returns something
+
+```js
+function A() {
+  this.v = 1;
+  return { v: 2 };
+}
+function B() {
+  this.v = 1;
+  return 5;
+}
+
+console.log(new A().v, new B().v, new A() instanceof A, new B() instanceof B);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+2 1 false true
+```
+
+If a constructor returns an **object**, that object replaces the new instance (so `instanceof A` is false). Returning a **primitive** is ignored and `this` is used. This rule is what a `new` polyfill (`myNew`) has to reproduce.
+
+</details>
+
+### Q43. Memoize with `JSON.stringify` keys
+
+```js
+const memo = (fn) => {
+  const cache = new Map();
+  return (...args) => {
+    const key = JSON.stringify(args);
+    if (cache.has(key)) return cache.get(key);
+    const result = fn(...args);
+    cache.set(key, result);
+    return result;
+  };
+};
+
+let calls = 0;
+const f = memo((x) => {
+  calls++;
+  return x;
+});
+f(1); f('1'); f([1]); f(undefined);
+console.log(f(null), calls);
+f(NaN);
+console.log(calls);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+undefined 4
+4
+```
+
+`JSON.stringify([undefined])`, `[null]` and `[NaN]` all produce `"[null]"`, so those inputs **collide** — `f(null)` returns the cached `undefined` from `f(undefined)` without calling the function. Stringifying also drops functions, symbols and cycles, and is slow for big arguments. Use a nested `Map` per argument or a resolver for production-grade keys.
+
+</details>
+
+### Q44. Memoize with `||` (falsy results are recomputed)
+
+```js
+const memoBad = (fn) => {
+  const cache = {};
+  return (x) => cache[x] || (cache[x] = fn(x));
+};
+
+let n = 0;
+const g = memoBad((x) => {
+  n++;
+  return x * 0;
+});
+g(5); g(5); g(5);
+console.log(n);
+
+const key = memoBad((o) => o.id);
+console.log(key({ id: 1 }), key({ id: 2 }));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+3
+1 1
+```
+
+The cached result `0` is falsy, so `||` misses it every time — use `key in cache` / `Map.has`. Also, a plain-object cache coerces keys to strings: both `{ id: 1 }` and `{ id: 2 }` become `"[object Object]"`, so the second call returns the first call's result. `Map` keeps keys by identity.
+
+</details>
+
+### Q45. `curry` relies on `fn.length`
+
+```js
+const curry = (fn) =>
+  function c(...a) {
+    return a.length >= fn.length ? fn.apply(this, a) : (...b) => c.apply(this, [...a, ...b]);
+  };
+
+const add3 = curry((a, b, c) => a + b + c);
+console.log(add3(1)(2)(3), add3(1, 2)(3), add3(1)(2, 3), add3(1, 2, 3));
+
+const withDefault = curry((a, b = 2, c) => [a, b, c]);
+console.log(withDefault(1));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+6 6 6 6
+[ 1, 2, undefined ]
+```
+
+All call shapes work as long as the arity is known. With a default parameter, `fn.length` is `1`, so `curry` considers one argument enough and calls the function straight away — the fix is to let callers pass the arity (`curry(fn, 3)`).
+
+</details>
+
+### Q46. Infinite currying with `valueOf`
+
+```js
+function sum(a) {
+  const f = (b) => sum(a + (b ?? 0));
+  f.valueOf = () => a;
+  return f;
+}
+
+console.log(+sum(1)(2)(3), sum(1)(2) + 0, `${sum(5)(5)}`);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+6 3 (b) => sum(a + (b ?? 0))
+```
+
+Unary `+` and the `+` operator ask for a *number/default* hint, which calls `valueOf` (our sum). A template literal asks for a **string** hint, which calls `toString` first — the function's default `toString` returns its source code. Define `f.toString` as well (or use `Symbol.toPrimitive`) if both conversions must work.
+
+</details>
+
+### Q47. `once`: cached result and swallowed errors
+
+```js
+const once = (fn) => {
+  let done = false;
+  let result;
+  return function (...a) {
+    if (!done) {
+      done = true;
+      result = fn.apply(this, a);
+    }
+    return result;
+  };
+};
+
+const init = once((x) => {
+  console.log('init', x);
+  return x * 2;
+});
+console.log(init(1), init(2), init(3));
+
+const bad = once(() => {
+  throw new Error('first');
+});
+try {
+  bad();
+} catch (e) {
+  console.log('1st', e.message);
+}
+console.log(bad());
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+init 1
+2 2 2
+1st first
+undefined
+```
+
+Arguments after the first call are ignored and the first result is returned forever. Because `done` is set **before** `fn` runs, a throwing function is never retried and later calls silently return `undefined`. Decide deliberately whether failures should reset the flag.
+
+</details>
+
+### Q48. `pipe` vs `compose`
+
+```js
+const pipe = (...fns) => (x) => fns.reduce((v, f) => f(v), x);
+const compose = (...fns) => (x) => fns.reduceRight((v, f) => f(v), x);
+
+const add1 = (x) => x + 1;
+const dbl = (x) => x * 2;
+const str = (x) => `<${x}>`;
+
+console.log(pipe(add1, dbl, str)(3), compose(add1, dbl, str)(3));
+console.log(pipe()(7), compose(str)(7));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+<8> NaN
+7 <7>
+```
+
+`pipe` runs left to right: `(3 + 1) * 2 = 8` → `"<8>"`. `compose` runs right to left: `str(3)` = `"<3>"`, `"<3>" * 2` is `NaN`, `NaN + 1` is `NaN`. With no functions, both return the input unchanged (identity).
+
+</details>
+
+### Q49. `reduce` with and without an initial value
+
+```js
+console.log([5].reduce((a, b) => a + b), [].reduce((a, b) => a + b, 'init'));
+try {
+  [].reduce((a, b) => a + b);
+} catch (e) {
+  console.log(e.constructor.name + ': ' + e.message);
+}
+console.log([1, 2, 3].reduce((acc, x, i, arr) => acc + x * i + arr.length, 0));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+5 init
+TypeError: Reduce of empty array with no initial value
+17
+```
+
+Without an initial value, the first element is the accumulator and the callback starts at index 1; a single element is returned as-is without calling the callback, and an empty array throws. The last line: `0+0*0+3 = 3`, `3+2*1+3 = 8`, `8+3*2+3 = 17` (the callback gets `(acc, item, index, array)`).
+
+</details>
+
+### Q50. `map(parseInt)`
+
+```js
+console.log(['1', '2', '3'].map(parseInt), ['10', '10', '10'].map(Number), ['1', '2', '3'].map((s) => parseInt(s)));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+[ 1, NaN, NaN ] [ 10, 10, 10 ] [ 1, 2, 3 ]
+```
+
+`map` passes `(value, index, array)`, so `parseInt('2', 1)` uses radix 1 (invalid → `NaN`) and `parseInt('3', 2)` is `NaN` (3 is not a binary digit). `Number` ignores extra arguments. Wrap in an arrow function to control exactly what is passed.
+
+</details>
+
+### Q51. Sparse arrays and the iteration methods
+
+```js
+const sparse = [1, , 3];
+let visits = 0;
+sparse.forEach(() => visits++);
+
+console.log(visits, sparse.map((x) => x * 2), sparse.length, 1 in sparse, Object.keys(sparse));
+console.log([...sparse].map((x) => x), Array.from(sparse, (x) => x));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+2 [ 2, <1 empty item>, 6 ] 3 false [ '0', '2' ]
+[ 1, undefined, 3 ] [ 1, undefined, 3 ]
+```
+
+`forEach`, `map`, `filter` and `reduce` **skip holes** (the index is not "in" the array) and `map` preserves them. Spread and `Array.from` turn holes into real `undefined` values. A faithful `Array.prototype.map` polyfill must check `i in this`.
+
+</details>
+
+### Q52. Mutating an array while iterating
+
+```js
+const arr = [1, 2, 3];
+arr.forEach((x) => {
+  if (x === 1) arr.push(99);
+  console.log(x);
+});
+console.log(arr);
+
+const arr2 = [1, 2, 3, 4];
+arr2.forEach((x, i) => {
+  if (i === 0) arr2.shift();
+  console.log(x);
+});
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+1
+2
+3
+[ 1, 2, 3, 99 ]
+1
+3
+4
+```
+
+The number of iterations is fixed from the **initial length** (3), so the pushed `99` is not visited. Elements removed before being reached are skipped: after `shift()` the array is `[2, 3, 4]`, index 1 is `3`, index 2 is `4`, and index 3 no longer exists (so it is skipped). Iterate over a copy when you mutate.
+
+</details>
+
+### Q53. `sort` defaults
+
+```js
+console.log(
+  [10, 9, 1, 100].sort(),
+  [10, 9, 1, 100].sort((a, b) => a - b),
+  ['b', undefined, 'a'].sort(),
+  [3, 1, 2].sort(() => 0)
+);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+[ 1, 10, 100, 9 ] [ 1, 9, 10, 100 ] [ 'a', 'b', undefined ] [ 3, 1, 2 ]
+```
+
+Without a comparator, elements are compared as **strings** (`"10" < "9"`). `undefined` always sorts to the end and the comparator is never called for it. `sort` is stable (ES2019), so an always-equal comparator keeps the original order. `sort` also **mutates** the array — copy first with `[...arr]` or `toSorted`.
+
+</details>
+
+### Q54. `flat` and `flatMap`
+
+```js
+console.log(
+  [1, [2, [3, [4]]]].flat(),
+  [1, [2, [3, [4]]]].flat(Infinity),
+  [[1, 2], [3]].flatMap((x) => x),
+  [1, 2].flatMap((x) => [[x]]),
+  [1, , 3].flat()
+);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+[ 1, 2, [ 3, [ 4 ] ] ] [ 1, 2, 3, 4 ] [ 1, 2, 3 ] [ [ 1 ], [ 2 ] ] [ 1, 3 ]
+```
+
+`flat()` defaults to depth `1`; pass `Infinity` to flatten fully. `flatMap` is `map` + `flat(1)` — it removes only **one** level, so `[[x]]` becomes `[x]`. `flat` also drops holes. A recursive `flatten(arr, depth)` polyfill needs a depth parameter and hole handling.
+
+</details>
+
+### Q55. What `JSON.parse(JSON.stringify(x))` loses
+
+```js
+const src = {
+  d: new Date(0),
+  u: undefined,
+  f() {},
+  n: NaN,
+  i: Infinity,
+  m: new Map([[1, 2]]),
+  s: new Set([1]),
+  r: /x/g,
+  nested: { a: [1, , 3] },
+};
+console.log(JSON.stringify(JSON.parse(JSON.stringify(src))));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+{"d":"1970-01-01T00:00:00.000Z","n":null,"i":null,"m":{},"s":{},"r":{},"nested":{"a":[1,null,3]}}
+```
+
+`Date` becomes a string, `undefined` and functions disappear from objects (and become `null` inside arrays), `NaN`/`Infinity` become `null`, `Map`/`Set`/`RegExp` become `{}`, holes become `null`. It also throws on circular references and `BigInt`. That is why a hand-written `deepClone` needs type checks.
+
+</details>
+
+### Q56. Spread is shallow; `structuredClone` is deep
+
+```js
+const o = { a: { b: 1 }, d: new Date(0) };
+const shallow = { ...o };
+const deep = structuredClone(o);
+shallow.a.b = 2;
+
+console.log(o.a.b, deep.a.b, deep.d instanceof Date, deep.d === o.d);
+try {
+  structuredClone({ f() {} });
+} catch (e) {
+  console.log(e.name);
+}
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+2 1 true false
+DataCloneError
+```
+
+Spreading copies only the top level, so the nested object is shared (`o.a.b` becomes `2`). `structuredClone` deep-copies dates, maps, sets, typed arrays and cycles, but cannot clone **functions** (or DOM nodes, class methods/prototypes) — it throws `DataCloneError`.
+
+</details>
+
+### Q57. Circular references
+
+```js
+const a = { name: 'a' };
+a.self = a;
+
+try {
+  JSON.stringify(a);
+} catch (e) {
+  console.log(e.constructor.name);
+}
+const copy = structuredClone(a);
+console.log(copy.self === copy, copy === a);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+TypeError
+true false
+```
+
+`JSON.stringify` throws on cycles. A deep-clone polyfill handles them with a `WeakMap` from original → clone: before recursing, register the clone; if the node is seen again, return the existing clone. `structuredClone` does this internally.
+
+</details>
+
+### Q58. Loose equality
+
+```js
+console.log([] == false, [] == ![], null == undefined, null == 0, NaN == NaN, [1] == 1, '0' == false, {} == '[object Object]');
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+true true true false false true true true
+```
+
+`[] == false`: `false → 0`, `[] → '' → 0`. `[] == ![]`: `![]` is `false`, same as above. `null == undefined` is true but `null` equals nothing else under `==`. `NaN` is never equal to itself. `[1]` converts to `'1'` then `1`. Prefer `===`.
+
+</details>
+
+### Q59. `NaN`, `-0` and the different equality algorithms
+
+```js
+console.log(
+  Object.is(NaN, NaN),
+  Object.is(0, -0),
+  0 === -0,
+  [NaN].includes(NaN),
+  [NaN].indexOf(NaN),
+  new Set([NaN, NaN, 0, -0]).size,
+  new Map([[NaN, 'x']]).get(NaN)
+);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+true false true true -1 2 x
+```
+
+`===` and `indexOf` use strict equality (`NaN !== NaN`, `0 === -0`). `Object.is` distinguishes `-0` and treats `NaN` as equal to itself. `includes`, `Set` and `Map` use **SameValueZero**: `NaN` equals `NaN` and `0` equals `-0`. This matters for `memoize` keys and `deepEqual`.
+
+</details>
+
+### Q60. Type checks used by a `deepClone`
+
+```js
+console.log(
+  typeof null,
+  typeof [],
+  Array.isArray([]),
+  Object.prototype.toString.call(new Date(0)),
+  Object.prototype.toString.call(null),
+  Object.prototype.toString.call(/x/),
+  [] instanceof Object,
+  Object.create(null) instanceof Object
+);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+object object true [object Date] [object Null] [object RegExp] true false
+```
+
+`typeof` cannot tell arrays, `null`, dates or regexes apart. `Object.prototype.toString.call(x)` returns a reliable tag, and `Array.isArray` is the safe array check. Objects created with `Object.create(null)` have no prototype, so `instanceof Object` is false — and `obj.hasOwnProperty` does not exist on them (use `Object.hasOwn`).
+
+</details>
+
+### Q61. Emitter: adding and removing listeners during `emit`
+
+```js
+class Emitter {
+  constructor() {
+    this.l = new Map();
+  }
+  on(e, f) {
+    if (!this.l.has(e)) this.l.set(e, []);
+    this.l.get(e).push(f);
+    return this;
+  }
+  off(e, f) {
+    this.l.set(e, (this.l.get(e) || []).filter((x) => x !== f));
+  }
+  emit(e, ...a) {
+    (this.l.get(e) || []).slice().forEach((f) => f(...a));
+  }
+}
+
+const em = new Emitter();
+const second = () => console.log('second');
+em.on('x', () => {
+  console.log('first');
+  em.off('x', second);
+  em.on('x', () => console.log('added'));
+});
+em.on('x', second);
+
+em.emit('x');
+console.log('--');
+em.emit('x');
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+first
+second
+--
+first
+added
+```
+
+`emit` iterates over a **snapshot** (`slice()`), so removing `second` during the first emit does not stop it from running, and the listener added during the emit does not run until the next one. Iterating the live array would skip listeners or loop forever.
+
+</details>
+
+### Q62. `once` and `off` with the original function
+
+```js
+const listeners = [];
+const on = (f) => listeners.push(f);
+const off = (f) => {
+  const i = listeners.indexOf(f);
+  if (i > -1) listeners.splice(i, 1);
+};
+const once = (f) => {
+  const wrapper = (...a) => {
+    off(wrapper);
+    f(...a);
+  };
+  on(wrapper);
+};
+
+const handler = () => console.log('hit');
+once(handler);
+off(handler);
+console.log(listeners.length);
+
+listeners.slice().forEach((f) => f());
+console.log(listeners.length);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+1
+hit
+0
+```
+
+`once` stores a **wrapper**, so `off(handler)` cannot find it and the listener stays. Real emitters fix this by tagging the wrapper (`wrapper.listener = handler`) and comparing against it in `off`. Note the wrapper removes itself *before* calling `f`, so a re-entrant `emit` cannot fire it twice.
+
+</details>
+
+### Q63. `debounce` must preserve `this` and arguments
+
+```js
+function debounce(fn, ms) {
+  let t;
+  return function (...a) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, a), ms);
+  };
+}
+
+const obj = {
+  v: 'obj',
+  m: debounce(function () {
+    console.log('fn', this.v);
+  }, 10),
+  arrowM: debounce(() => console.log('arrow', this?.v), 10),
+};
+obj.m();
+obj.arrowM();
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+fn obj
+arrow undefined
+```
+
+The returned wrapper is a regular function, so it receives `this === obj` from `obj.m()` and forwards it with `apply`. The `setTimeout` callback is an arrow function, which keeps that `this`. The *callback* written as an arrow function inside the object literal uses the module-level `this` (`undefined`), no matter how it is called — don't write debounced methods as arrows.
+
+</details>
+
+### Q64. Leading-edge debounce
+
+```js
+function debounce(fn, ms, immediate = false) {
+  let t;
+  return (...a) => {
+    const callNow = immediate && !t;
+    clearTimeout(t);
+    t = setTimeout(() => {
+      t = null;
+      if (!immediate) fn(...a);
+    }, ms);
+    if (callNow) fn(...a);
+  };
+}
+
+const lead = debounce((x) => console.log('lead', x), 20, true);
+lead(1);
+lead(2);
+lead(3);
+setTimeout(() => lead(4), 50);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+lead 1
+lead 4
+```
+
+In leading mode the first call of a burst runs immediately and the rest of the burst is ignored; the timer only marks "quiet again" (it is reset by `lead(2)` and `lead(3)`). After 20 ms without calls the flag clears, so `lead(4)` at 50 ms starts a new burst. Search-as-you-type needs the trailing edge; "submit" buttons want the leading edge.
+
+</details>
+
+### Q65. Timestamp-based throttle (leading only)
+
+```js
+const throttle = (fn, ms) => {
+  let last = 0;
+  return (...a) => {
+    const now = Date.now();
+    if (now - last >= ms) {
+      last = now;
+      fn(...a);
+    }
+  };
+};
+
+const t = throttle((x) => console.log('run', x), 50);
+t(1);
+t(2);
+setTimeout(() => t(3), 20);
+setTimeout(() => t(4), 70);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+run 1
+run 4
+```
+
+Calls inside the window are dropped (`2` and `3`) and there is **no trailing call**, so the final burst can be lost entirely. If the last event must be delivered (a final scroll position, a resize), add a trailing timer as the `throttle` implementation above does.
+
+</details>
+
+### Q66. `cancel` and `flush`
+
+```js
+function debounce(fn, ms) {
+  let t;
+  let lastArgs;
+  const d = (...a) => {
+    lastArgs = a;
+    clearTimeout(t);
+    t = setTimeout(() => {
+      t = null;
+      fn(...a);
+    }, ms);
+  };
+  d.cancel = () => {
+    clearTimeout(t);
+    t = null;
+  };
+  d.flush = () => {
+    if (t) {
+      clearTimeout(t);
+      t = null;
+      fn(...lastArgs);
+    }
+  };
+  return d;
+}
+
+const d = debounce((x) => console.log('run', x), 20);
+d('a');
+d.flush();
+d.flush();
+d('b');
+d.cancel();
+d('c');
+setTimeout(() => console.log('end'), 50);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+run a
+run c
+end
+```
+
+`flush` runs a pending call right now (and only once — the second `flush` has nothing pending). `cancel` drops the pending call (`b`). `c` is scheduled normally and fires after 20 ms. Expose `cancel` so a React `useEffect` cleanup can stop a pending call on unmount.
+
+</details>
+
+### Q67. Timeout wrapper with `Promise.race`
+
+```js
+const sleep = (ms, v) => new Promise((r) => setTimeout(() => r(v), ms));
+const timeout = (p, ms) =>
+  Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+
+timeout(sleep(50, 'slow'), 20).then(console.log, (e) => console.log(e.message));
+timeout(sleep(10, 'fast'), 40).then(console.log, (e) => console.log(e.message));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+fast
+timeout
+```
+
+`race` settles with whichever promise settles first: `fast` wins at 10 ms; the slow one loses to the 20 ms timer. Two caveats: the losing promise is **not cancelled** (the 50 ms sleep still runs), and the losing timer keeps running unless you `clearTimeout` it — use `AbortController` and clean up the timer in real code.
+
+</details>
+
+### Q68. Retry with exponential backoff — attempts and delays
+
+```js
+async function retry(fn, retries, base, log) {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn(i);
+    } catch (e) {
+      if (i >= retries) throw e;
+      log.push(base * 2 ** i);
+    }
+  }
+}
+
+(async () => {
+  const d1 = [];
+  console.log(
+    await retry(async (i) => {
+      if (i < 3) throw new Error('e' + i);
+      return 'ok' + i;
+    }, 5, 10, d1),
+    d1
+  );
+
+  const d2 = [];
+  await retry(async (i) => {
+    throw new Error('always' + i);
+  }, 2, 10, d2).catch((e) => console.log(e.message, d2));
+})();
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+ok3 [ 10, 20, 40 ]
+always2 [ 10, 20 ]
+```
+
+Delays double each time (`base * 2 ** attempt`). The first function succeeds on its 4th call (index 3) after three recorded waits. With `retries = 2` the function runs 3 times, waits twice, and the **last** error is rethrown. (The sleep is omitted here so the example is deterministic; add `await sleep(delay)` — and jitter — in real code.)
+
+</details>
+
+### Q69. Polluting `Array.prototype`
+
+```js
+Array.prototype.myMap = function () {};
+const arr = [1, 2];
+for (const k in arr) console.log(k);
+console.log(Object.keys(arr), arr.hasOwnProperty('myMap'));
+delete Array.prototype.myMap;
+
+Object.defineProperty(Array.prototype, 'myMap2', {
+  value() {},
+  writable: true,
+  configurable: true,
+});
+for (const k in [1]) console.log(k);
+delete Array.prototype.myMap2;
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+0
+1
+myMap
+[ '0', '1' ] false
+0
+```
+
+Assigning `Array.prototype.x = …` creates an **enumerable** property, so every `for…in` over any array now yields `myMap`. `Object.keys` shows only own properties. Polyfills should be added with `Object.defineProperty` (non-enumerable, writable, configurable) and guarded with `if (!Array.prototype.myMap)` so a native implementation is never overwritten.
+
+</details>
+
+### Q70. Hoisting and the temporal dead zone
+
+```js
+console.log(typeof hoisted, typeof expr, typeof arrow);
+function hoisted() {}
+var expr = function () {};
+var arrow = () => {};
+
+try {
+  console.log(tdz);
+} catch (e) {
+  console.log(e.name);
+}
+let tdz = 1;
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+function undefined undefined
+ReferenceError
+```
+
+Function **declarations** are hoisted with their body. `var` declarations are hoisted but initialised to `undefined`, so function *expressions* and arrows assigned to `var` are not callable yet. `let`/`const` are hoisted but sit in the temporal dead zone until their declaration runs, so reading them throws `ReferenceError`.
+
+</details>
+
+### Q71. Closure over a variable vs a copy
+
+```js
+function createStore() {
+  let state = 0;
+  const snapshot = state;
+  const get = () => state;
+  return {
+    inc() {
+      state++;
+    },
+    get,
+    snapshot,
+  };
+}
+
+const s = createStore();
+s.inc();
+s.inc();
+console.log(s.get(), s.snapshot);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+2 0
+```
+
+`get` closes over the **variable** `state`, so it always reads the current value. `snapshot` was a number copied into the returned object at creation time and never changes. This is the same reason a React effect that captured `count` sees a stale value — closures capture bindings, but state values copied into a render are frozen per render.
+
+</details>
+
+### Q72. `Object.freeze` is shallow
+
+```js
+const frozen = Object.freeze({ a: 1, nested: { b: 2 }, arr: [1] });
+console.log(Reflect.set(frozen, 'a', 99));
+frozen.nested.b = 99;
+frozen.arr.push(2);
+console.log(frozen.a, frozen.nested.b, frozen.arr, Object.isFrozen(frozen.nested));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+false
+1 99 [ 1, 2 ] false
+```
+
+`freeze` blocks adding, removing and changing the object's **own** properties (assignment fails silently in sloppy mode and throws in strict mode — `Reflect.set` just returns `false`). Nested objects and arrays stay mutable, so immutability for state needs a recursive `deepFreeze` or immutable updates.
+
+</details>
+
+### Q73. Spread, `Array.from` and strings
+
+```js
+console.log(
+  [...'a😀b'].length,
+  'a😀b'.length,
+  Array.from({ length: 3 }, (_, i) => i * 2),
+  Array(3).map((_, i) => i),
+  [...Array(3)].map((_, i) => i)
+);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+3 4 [ 0, 2, 4 ] [ <3 empty items> ] [ 0, 1, 2 ]
+```
+
+Spread uses the string iterator, which walks **code points** (the emoji counts once); `.length` counts UTF-16 units (the emoji counts twice). `Array.from` accepts any array-like plus a mapper. `Array(3)` makes an array of *holes*, which `map` skips; spreading it creates real `undefined` entries that `map` visits.
+
+</details>
+
+### Q74. Property order
+
+```js
+const o = { b: 1, 2: 'x', a: 2, 1: 'y', [Symbol('s')]: 3 };
+console.log(Object.keys(o), JSON.stringify(o));
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+[ '1', '2', 'b', 'a' ] {"1":"y","2":"x","b":1,"a":2}
+```
+
+Integer-like keys come first in ascending order, then string keys in insertion order, then symbols. Symbols are skipped by `Object.keys`, `for…in` and `JSON.stringify`. Because of the ordering rule, comparing objects with `JSON.stringify` works only if both were built with the same key order.
+
+</details>
+
+### Q75. `JSON.stringify` quirks that break naive equality
+
+```js
+console.log(
+  JSON.stringify({ a: 1, b: 2 }) === JSON.stringify({ b: 2, a: 1 }),
+  JSON.stringify({ a: undefined, b: () => {} }),
+  JSON.stringify([undefined, () => {}]),
+  JSON.stringify({ d: new Date(0) })
+);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+false {} [null,null] {"d":"1970-01-01T00:00:00.000Z"}
+```
+
+Key order matters, `undefined`/function values vanish from objects and become `null` in arrays, and `Date` goes through `toJSON`. Use a recursive `deepEqual` (comparing types, key sets and values) instead of stringifying.
+
+</details>
+
+### Q76. `Object` vs `Map` as a cache
+
+```js
+const objCache = {};
+const k1 = { id: 1 };
+const k2 = { id: 2 };
+objCache[k1] = 'one';
+objCache[k2] = 'two';
+const mapCache = new Map([[k1, 'one'], [k2, 'two']]);
+
+console.log(Object.keys(objCache), objCache[k1], mapCache.get(k1), mapCache.size);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+[ '[object Object]' ] two one 2
+```
+
+Plain-object keys are converted to **strings**, so both objects collapse into the single key `"[object Object]"` and the second write overwrites the first. `Map` keys can be any value and are compared by identity. Use `WeakMap` when keys are objects that should be garbage-collected (e.g. memoizing per-DOM-node).
+
+</details>
+
+### Q77. Type coercion with `+`, `-` and `*`
+
+```js
+console.log([1 + '2', '3' - 1, '3' + 1 - 1, [] + [], [] + {}, +'', +' 12 ', +'1,2', true + true, [2] * [3]]);
+```
+
+<details>
+<summary><strong>Show Output</strong></summary>
+
+```js
+[ '12', 2, 30, '', '[object Object]', 0, 12, NaN, 2, 6 ]
+```
+
+`+` concatenates if either side is a string (`1 + '2'` → `'12'`); `-` and `*` always convert to numbers (`'3' - 1` → `2`). `'3' + 1 - 1` is `('3' + 1) - 1` = `'31' - 1` = `30`. Arrays and objects are converted with `toString` (`[] → ''`, `{} → '[object Object]'`). `+''` is `0`, whitespace is trimmed, `'1,2'` is `NaN`, `true + true` is `2`, and `[2] * [3]` is `6`.
 
 </details>
